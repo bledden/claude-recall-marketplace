@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "recall-local",
+  "version": "1.0.0",
+  "description": "Local marketplace for the recall plugin",
+  "owner": {
+    "name": "bledden",
+    "email": "bledden@users.noreply.github.com"
+  },
+  "plugins": [
+    {
+      "name": "recall",
+      "description": "Recover conversation context when Claude loses track, with interactive browsing and observability logging",
+      "source": "./plugins/recall",
+      "category": "productivity"
+    }
+  ]
+}
