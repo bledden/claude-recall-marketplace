@@ -1,14 +1,50 @@
 {
-  "description": "Context recall hooks - saves context snapshots and logs recall events",
+  "description": "Recall hooks - exports session env, indexes conversations, nudges on compaction, finalizes sessions",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; $PY ${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/save_context_snapshot.py",
+            "command": "command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; $PY ${CLAUDE_PLUGIN_ROOT}/hooks/prompt_submit.py",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; $PY ${CLAUDE_PLUGIN_ROOT}/hooks/post_compact.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; $PY ${CLAUDE_PLUGIN_ROOT}/hooks/session_end.py",
+            "timeout": 5
           }
         ]
       }

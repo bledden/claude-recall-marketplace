@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "recall-local",
-  "version": "1.0.0",
+  "version": "2.2.2",
   "description": "Local marketplace for the recall plugin",
   "owner": {
     "name": "bledden",
@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "recall",
-      "description": "Recover conversation context when Claude loses track, with interactive browsing and observability logging",
+      "description": "Cross-session, cross-project conversation recall with SQLite storage, auto-tagging, compaction recovery, highlight sharing, and a proactive recall assistant skill",
       "source": "./plugins/recall",
       "category": "productivity"
     }

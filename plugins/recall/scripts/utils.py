@@ -5,10 +5,10 @@ This module contains common functions used across multiple scripts
 to avoid code duplication.
 """
 
-import json
+import hashlib
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -21,9 +21,51 @@ PAGE_SIZE = 20
 AROUND_TIME_WINDOW = 5
 
 # File paths
-INDEX_DIR = Path.home() / '.claude' / 'context-recall'
-INDEX_FILE = INDEX_DIR / 'index.json'
 LOG_FILE = Path.home() / '.claude' / 'recall-events.log'
+
+
+def compute_project_hash(project_path: str) -> str:
+    """Stable 16-char hash identifying a project by its filesystem path.
+
+    Used to group sessions by project for cross-project recall. Both the
+    SessionStart hook and the UserPromptSubmit hook derive this from the same
+    ``cwd`` value, so a given project always maps to the same hash. An empty
+    path yields ``''`` (never a hash of the empty string).
+    """
+    if not project_path:
+        return ''
+    normalized = os.path.normpath(os.path.expanduser(project_path))
+    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()[:16]
+
+
+def resolve_session_id(explicit: str = '') -> str:
+    """Resolve the current session id — concurrency-safe.
+
+    Precedence:
+      1. an explicit value (e.g. a ``--session`` CLI arg),
+      2. ``CLAUDE_CODE_SESSION_ID`` — injected by Claude Code into every command
+         subprocess, so it is correct PER session even when several sessions run
+         concurrently (the fix for "recall returns another session's id"),
+      3. ``RECALL_SESSION_ID`` — legacy fallback written by the SessionStart hook,
+         for Claude Code versions that don't provide the native variable.
+
+    Returns ``''`` if none is available (callers should fail safe — never guess
+    another session).
+    """
+    return (explicit
+            or os.environ.get('CLAUDE_CODE_SESSION_ID', '')
+            or os.environ.get('RECALL_SESSION_ID', ''))
+
+
+def resolve_project_hash(explicit: str = '') -> str:
+    """Resolve the current project hash.
+
+    Precedence: explicit value > ``RECALL_PROJECT_HASH`` env > derived from the
+    current working directory (commands run with the project root as cwd).
+    """
+    return (explicit
+            or os.environ.get('RECALL_PROJECT_HASH', '')
+            or compute_project_hash(os.getcwd()))
 
 
 def extract_text_content(message: Dict[str, Any]) -> str:
@@ -103,7 +145,7 @@ def parse_date_time_query(time_str: str, reference_dates: List[str] = None) -> O
     # Check for relative date keywords
     target_date = None
     if 'yesterday' in time_str:
-        target_date = datetime.now().date() - __import__('datetime').timedelta(days=1)
+        target_date = datetime.now().date() - timedelta(days=1)
         time_str = time_str.replace('yesterday', '').strip()
     elif 'today' in time_str:
         target_date = datetime.now().date()
@@ -151,7 +193,7 @@ def format_timestamp(iso_timestamp: str) -> str:
         dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
         local_dt = dt.astimezone()
         return local_dt.strftime("%-I:%M %p").lower()
-    except Exception:
+    except (ValueError, TypeError):
         return ""
 
 
@@ -164,7 +206,7 @@ def format_date(iso_timestamp: str) -> str:
         dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
         local_dt = dt.astimezone()
         return local_dt.strftime("%b %d, %Y at %-I:%M %p")
-    except Exception:
+    except (ValueError, TypeError):
         return "Unknown date"
 
 
@@ -177,7 +219,7 @@ def format_short_date(iso_timestamp: str) -> str:
         dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
         local_dt = dt.astimezone()
         return local_dt.strftime("%b %-d")
-    except Exception:
+    except (ValueError, TypeError):
         return ""
 
 
@@ -188,104 +230,8 @@ def get_date_from_timestamp(iso_timestamp: str) -> Optional[str]:
     try:
         dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
         return dt.date().isoformat()
-    except Exception:
+    except (ValueError, TypeError):
         return None
-
-
-def load_index() -> Optional[Dict]:
-    """Load the conversation index from disk."""
-    if not INDEX_FILE.exists():
-        return None
-
-    try:
-        with open(INDEX_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return None
-
-
-def save_index(index_data: Dict) -> bool:
-    """Save the conversation index to disk."""
-    INDEX_DIR.mkdir(parents=True, exist_ok=True)
-
-    try:
-        with open(INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(index_data, f, indent=2)
-        return True
-    except Exception:
-        return False
-
-
-def parse_transcript_messages(transcript_path: str) -> List[Dict[str, Any]]:
-    """Parse transcript file and extract messages with timestamps.
-
-    Returns list of dicts with keys: role, text, timestamp
-    """
-    messages = []
-
-    if not transcript_path or not os.path.exists(transcript_path):
-        return messages
-
-    try:
-        with open(transcript_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    role = entry.get('type', '') or entry.get('role', '')
-                    if role not in ('user', 'assistant'):
-                        message_obj = entry.get('message', {})
-                        role = message_obj.get('role', '')
-
-                    if role in ('user', 'assistant'):
-                        message_obj = entry.get('message', {})
-                        text = extract_text_content(message_obj)
-                        timestamp = entry.get('timestamp', '')
-
-                        if text:
-                            messages.append({
-                                'role': role,
-                                'text': text,
-                                'timestamp': timestamp
-                            })
-                except json.JSONDecodeError:
-                    continue
-    except Exception:
-        pass
-
-    return messages
-
-
-def build_exchanges_from_messages(messages: List[Dict[str, Any]]) -> List[Dict]:
-    """Build list of exchanges from parsed messages.
-
-    Returns list of dicts with keys: idx, user_text, assistant_text, timestamp
-    """
-    exchanges = []
-    i = 0
-    exchange_idx = 1
-
-    while i < len(messages):
-        if messages[i]['role'] == 'user':
-            user_msg = messages[i]
-            if i + 1 < len(messages) and messages[i + 1]['role'] == 'assistant':
-                assistant_msg = messages[i + 1]
-                exchanges.append({
-                    'idx': exchange_idx,
-                    'user_text': user_msg['text'],
-                    'assistant_text': assistant_msg['text'],
-                    'timestamp': user_msg.get('timestamp', '')
-                })
-                exchange_idx += 1
-                i += 2
-            else:
-                i += 1
-        else:
-            i += 1
-
-    return exchanges
 
 
 def find_exchanges_by_time(
@@ -361,5 +307,10 @@ def find_exchanges_by_time(
 
 
 def search_in_text(text: str, keyword: str) -> bool:
-    """Check if keyword exists in text (case-insensitive)."""
+    """Check if keyword exists in text (case-insensitive).
+
+    Returns False if either text or keyword is empty.
+    """
+    if not text or not keyword:
+        return False
     return keyword.lower() in text.lower()

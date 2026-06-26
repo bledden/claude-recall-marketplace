@@ -1,8 +1,13 @@
 {
   "name": "recall",
-  "version": "1.0.0",
-  "description": "Recover conversation context when Claude loses track, with interactive browsing and observability logging",
+  "version": "2.2.2",
+  "description": "Cross-session, cross-project conversation recall with SQLite storage, auto-tagging, compaction recovery, highlight sharing, and proactive recall assistant skill",
   "author": {
-    "name": "bledden"
-  }
+    "name": "bledden",
+    "url": "https://github.com/bledden"
+  },
+  "homepage": "https://github.com/bledden/claude-recall-plugin",
+  "repository": "https://github.com/bledden/claude-recall-plugin",
+  "license": "MIT",
+  "keywords": ["recall", "context", "memory", "search", "session", "productivity"]
 }
