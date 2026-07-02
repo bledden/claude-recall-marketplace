@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "recall-local",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Local marketplace for the recall plugin",
   "owner": {
     "name": "bledden",
