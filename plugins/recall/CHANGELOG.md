@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - Unreleased
 
 ### Added
+- Opt-in local operational diagnostics for MCP readers and independent capture: fixed categories and numeric timings/counts only, no query/history text or network upload, two bounded 1 MiB segments, nonblocking writer coordination and failure isolation. App packaging can explicitly enable it per reader.
+- A local token/context-size benchmark separates tokenizer proxies, returned evidence, static skill/schema overhead and full-history size references; it does not consume the human evaluation packet or claim provider-billed savings.
 - P72 integration follow-up: share agent-aware directory discovery with independent capture, preserve Codex date-tree imports, and pass the chosen adapter to transcript detection. Four further regressions cover both Codex layouts and default/recursive Claude capture.
 - Machine-specific app reader preparer: Desktop chat MCP snippet and local Cowork plugin ZIP, explicit repository scope, absolute Python runtime and no bundled history or capture hooks. Generated launches and actual Desktop Chat/Mac-connected Cowork fixture retrieval are tested; capture and standalone cloud access remain separate. Desktop and plugin connector names are distinct for traceability. Corrected the former unqualified Cowork support and ZIP-only installation claims.
 - Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A private-corpus 60-question anchor evaluation harness and failure-boundary tests. Anchor retrieval is not a human-judged answer-quality score.
 
 ### Changed
+- Search and brief MCP results carry compact coverage counts instead of repeating full per-source diagnostic records. `recall_status` retains source details and pagination; compact counters label the checked page and retain backlog/missing-source warnings.
 - Schema version 6 adds source/block/chunk/vector tables; the existing exchange schema remains intact.
 - Full durable retention resolves the head-versus-tail storage question. Displayed brief excerpts label their source offsets.
 - SessionEnd drains durable backfill as well as the legacy capture cursor.

@@ -15,6 +15,7 @@ import time
 
 import memory_store as memory
 from db import SCHEMA_VERSION
+from recall_diagnostics import Diagnostics
 
 VERSIONS = ('2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25')
 MAX_MESSAGE = 256 * 1024
@@ -105,7 +106,7 @@ class RecallService:
             raise ValueError('A repository scope is required')
         self.db_path, self.repo_id = Path(db_path), repo_id
 
-    def coverage(self, conn, source=None, limit=20, offset=0):
+    def coverage(self, conn, source=None, limit=20, offset=0, compact=False):
         result = memory.status(conn, self.repo_id, limit, offset, source)
         # memory.status includes global derived counts. Never disclose those through a scoped interface.
         where, args = 's.repo_id=?', [self.repo_id]
@@ -118,6 +119,21 @@ class RecallService:
         result.pop('legacy_sessions', None)
         result['repo_id'] = self.repo_id
         result['capture'] = 'Read-only server: only separately indexed sources are visible.'
+        if compact:
+            rows = result['sources']
+            states = {}
+            skipped = {}
+            for row in rows:
+                states[row['state']] = states.get(row['state'], 0)+1
+                for kind, count in row['skipped'].items():
+                    skipped[kind] = skipped.get(kind, 0)+count
+            return {'repo_id': self.repo_id, 'source_count': result['source_count'],
+                    'checked_sources': len(rows), 'next_offset': result['next_offset'],
+                    'checked_source_states': states,
+                    'checked_backlog_bytes': sum(r['backlog_bytes'] or 0 for r in rows),
+                    'checked_skipped_records': skipped, 'semantic': result['semantic'],
+                    'coverage_notice': result['coverage_notice'],
+                    'details': 'Latest source page checked only; use recall_status and its next_offset for source paths, freshness and repair actions. This reader does not capture new conversations.'}
         return result
 
     def call(self, name, arguments):
@@ -136,10 +152,10 @@ class RecallService:
                 result['neighbors'] = result['neighbors'][:12]
             elif name == 'recall_search':
                 result = {'query': args['query'], 'hits': memory.search(conn, args['query'], args['limit'], self.repo_id,
-                    source_key=source, kind=None if args['kind']=='all' else args['kind']), 'coverage': self.coverage(conn, source)}
+                    source_key=source, kind=None if args['kind']=='all' else args['kind']), 'coverage': self.coverage(conn, source, compact=True)}
             elif name == 'recall_brief':
                 result = memory.brief(conn, self.repo_id, source, args['limit'])
-                result['coverage'] = self.coverage(conn, source)
+                result['coverage'] = self.coverage(conn, source, compact=True)
             else:
                 result = self.coverage(conn, source, args['limit'], args['offset'])
             result['notice'] = NOTICE + (' Brief evidence is sampled, not a complete summary.' if name == 'recall_brief' else '')
@@ -147,8 +163,9 @@ class RecallService:
 
 
 class Protocol:
-    def __init__(self, service):
+    def __init__(self, service, diagnostics=None):
         self.service = service
+        self.diagnostics = diagnostics or Diagnostics()
         self.initialized = False
         self.ready = False
         self.version = VERSIONS[-1]
@@ -193,11 +210,17 @@ class Protocol:
             name = params.get('name')
             if not isinstance(name, str) or name not in SPECS:
                 return self.error(request_id, -32602, 'Unknown tool')
+            started = time.monotonic()
+            outcome, count, response_chars = 'ok', 0, 0
             try:
                 value = self.service.call(name, params.get('arguments', {}))
                 encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
                 if len(encoded) > MAX_RESULT_CHARS:
                     raise ValueError('Result exceeds 65,536 characters. Narrow the source or reduce limit/max_chars.')
+                response_chars = len(encoded)
+                count = len(value.get('hits', value.get('evidence', [])))
+                if name == 'recall_search' and count == 0:
+                    outcome = 'empty'
                 result = {'content': [{'type': 'text', 'text': encoded}], 'isError': False}
                 if self.version >= '2025-06-18':
                     result['structuredContent'] = value
@@ -205,13 +228,19 @@ class Protocol:
                 text = str(exc).lower()
                 if isinstance(exc, ValueError):
                     message = str(exc)
+                    outcome = 'invalid_request'
                 elif 'interrupted' in text:
                     message = 'Query exceeded the 2-second budget; narrow the query, source or limit.'
+                    outcome = 'query_budget'
                 elif 'locked' in text or 'busy' in text:
                     message = 'Store is busy (another process holds a write lock); retry shortly.'
+                    outcome = 'store_busy'
                 else:
                     message = 'Store unavailable or needs maintenance. Run local status/doctor; this server never repairs or migrates.'
+                    outcome = 'store_unavailable'
                 result = {'content': [{'type': 'text', 'text': message}], 'isError': True}
+            self.diagnostics.record(name, outcome, (time.monotonic()-started)*1000,
+                                    result_count=count, response_chars=response_chars)
         else:
             return self.error(request_id, -32601, 'Method not found')
         return {'jsonrpc': '2.0', 'id': request_id, 'result': result}
@@ -241,13 +270,14 @@ def serve(protocol, stdin, stdout):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, default=Path(os.environ.get('RECALL_DB') or '~/.claude/context-recall/recall.db').expanduser())
+    parser.add_argument('--diagnostics', type=Path, help='Opt-in local bounded metrics log; parent directory must exist. No query/history text or network upload.')
     scope = parser.add_mutually_exclusive_group(required=True)
     scope.add_argument('--repo-id', help='Exact repository ID from recall_memory.py sources')
     scope.add_argument('--cwd', help='Explicit project directory; resolve its repository identity at startup')
     args = parser.parse_args()
     repo = args.repo_id or memory.repository_identity(args.cwd)
     try:
-        serve(Protocol(RecallService(args.db, repo)), sys.stdin.buffer, sys.stdout)
+        serve(Protocol(RecallService(args.db, repo), Diagnostics(args.diagnostics)), sys.stdin.buffer, sys.stdout)
     except (BrokenPipeError, KeyboardInterrupt):
         pass
 

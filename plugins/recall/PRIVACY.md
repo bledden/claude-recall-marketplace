@@ -29,9 +29,15 @@ All data is stored **locally on your machine**, by default under `~/.claude/cont
 - Does **not** transmit data to any external server
 - Does **not** make any network requests
 - Does **not** independently send stored data to third parties. Recalled passages enter the host agent's context and may be sent to its configured provider
-- Does **not** include any telemetry, analytics, or tracking
+- Does **not** send telemetry or analytics, or track users. Optional local operational diagnostics are described below
 
 The default database directory is created with owner-only permissions (0o700) when the plugin first creates it; an existing directory, or a store you selected elsewhere, keeps the permissions it has.
+
+### Optional local diagnostics
+
+MCP readers and the independent capture command accept an explicit `--diagnostics /path/to/events.jsonl` flag. It is off by default, with no environment-variable fallback and no upload endpoint. The parent directory must already exist. Logging stores only UTC event time, a fixed operation/outcome category, elapsed milliseconds, and numeric result/output/capture counts. It does not store queries, recalled text, commands, paths, block/session/repository identifiers, provider credentials or raw exception messages. It does not measure model billing or answer quality.
+
+The logger creates owner-only files and retains at most two 1 MiB segments plus an empty lock file. It refuses unrelated, symlinked, hardlinked or non-private destination files. Lock contention, write failure or unsupported POSIX locking drops events and emits one content-free stderr warning per process; retrieval/capture continues. Slow disk I/O is not a hard latency bound. Diagnostics do not instrument legacy commands, Code hooks or the model provider; those retain their existing local status/error behavior. See [diagnostics](docs/diagnostics.md) for enabling, reading and disabling logs.
 
 ## What Data Is NOT Stored
 

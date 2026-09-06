@@ -624,7 +624,7 @@ See [cross-agent setup and verified-client matrix](docs/gpt-expansion.md) for im
 
 ## Privacy and Data Handling
 
-Recall stores data **locally on your machine**, by default in `~/.claude/context-recall/` or at the explicitly configured store/export/backup path. It makes no network requests and includes no telemetry. Recalled passages are returned to the calling agent and may reach that agent’s configured model provider.
+Recall stores data **locally on your machine**, by default in `~/.claude/context-recall/` or at the explicitly configured store/export/backup path. It makes no network requests and sends no telemetry. Optional [local diagnostics](docs/diagnostics.md) record bounded numeric performance/error events, without queries or history. Recalled passages are returned to the calling agent and may reach that agent’s configured model provider.
 
 For full details on what data is stored, how to delete it, and your control options, see [PRIVACY.md](PRIVACY.md).
 

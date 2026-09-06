@@ -628,3 +628,33 @@ app restart or publication is performed for this integration.
 Receipts: `/Users/bledden/Documents/recall-review-2026-09-05/p72-integration/`.
 P10, P22, actual app capture P69, optional standalone access P70, answer caveats P71
 and all held publication steps retain their recorded status.
+
+### Astra: authorized everyday activation, diagnostics and token analysis
+
+The maintainer explicitly selected both readers and asked to address remaining
+work, add optional troubleshooting telemetry, measure token usage, and refresh the
+Funes comparison. Both Desktop entries have been merged into the existing config
+after an exact-content check and private backup. A running Code task prevents an
+app quit/restart at this stage; a view reload is not counted as a process restart.
+The Recall-project Cowork reader is installed and its local MCP component is
+enabled. The second reader and final package refresh/acceptance receipts are
+tracked in `everyday-activation/`; installation is not called complete until the
+UI confirms it. Human evaluation remains with the maintainer throughout the day.
+
+| ID | Status | Work and completion criterion |
+|---|---|---|
+| P74 | Implemented; privacy, rotation, concurrency, unavailable-log and packaged-reader tests pass | Explicit `--diagnostics PATH` for MCP and independent capture; off by default, no env fallback, no uploads, allowlisted numeric/category events, no queries/text/identifiers/errors. Two 1 MiB segments and a lock file, private destinations, nonblocking lock and best-effort failure. Documentation distinguishes local metrics from provider billing/quality and from uninstrumented hooks/legacy commands. A local 1,000-event probe measured 45.9 microseconds median enabled versus 0.17 microseconds disabled; not a universal disk-latency bound. |
+| P75 | Measured and optimized; 708 full-suite tests pass; fresh synthetic Claude MCP run succeeds | On the frozen two-scope snapshot, repeated full coverage contributed about 5,600 avoidable o200k_base tokens per Recall-project search. Compact coverage reduces median five-hit search + 2,000-character get from 9,997 to 4,391 tokens (56%); triton-msl from 2,502.5 to 2,107 (16%). Full status remains on demand. Tokenizer proxies are not Claude billing, and these operational probes are not human-labelled retrieval evaluation. Fresh Claude search/search/get/get answered the fixture correctly with exact citations: 918 output tokens, 8,661 cache-created input, 12,469 cache-read input, 6 uncached main-model input; total reported list-basis cost $0.1168145 including a small auxiliary model call. No causal savings comparison or dollar promise. |
+| P76 | Supported option documented; parked pending an observed workflow need | Current official OpenAI hook docs and installed Codex 0.153.1 expose lifecycle hooks with transcript_path. Existing foreground capture remains functional. The maintainer explicitly rejects a Funes-parity roadmap: implement lifecycle capture only if evaluation shows the current refresh workflow causes repeated missing-history failures. Any later design must preserve exact-session scope, parent/subagent identity, host trust review and bounded work. No hooks are installed or silently trusted. |
+
+P69's remaining limitation is not resolved by installing a reader: current app
+retrieval has no proven automatic source mapping/capture for new Chat/Cowork
+conversations. Existing local Cowork prefixes remain a separate scratch-import
+receipt. P52/P59/P66/P70 retain their future/conditional dispositions. P10 has not
+been run or marked accepted by Astra. P22 requires refreshing pre-install working
+terminal sessions when convenient. All publication remains held and last.
+
+**Maintainer direction:** Recall should keep its own lane. [Product direction](product-direction.md)
+sets lightweight local evidence recovery, inspectable citations, workflow continuity,
+deliberate scope and practical session organization as the decision criteria.
+Competitor parity alone does not promote any deferred row into implementation.

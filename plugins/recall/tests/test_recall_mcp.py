@@ -90,6 +90,32 @@ def test_scoped_status_counts_and_brief_do_not_leak_other_repositories(corpus):
     assert service.call('recall_search',{'query':'quasar'})['hits']==[]
 
 
+def test_search_coverage_is_compact_without_hiding_missing_sources(corpus):
+    path,_=corpus; service=RecallService(path,'repo-a')
+    with read_connection(path) as c:
+        source_path=c.execute("SELECT path FROM memory_sources WHERE source_key='claude:accepted'").fetchone()[0]
+    Path(source_path).unlink()
+    for tool, args in [('recall_search', {'query':'decision'}), ('recall_brief', {})]:
+        coverage=service.call(tool,args)['coverage']
+        assert coverage['source_count']==2 and coverage['checked_sources']==2
+        assert coverage['checked_source_states']['source_missing']==1
+        assert 'sources' not in coverage and len(json.dumps(coverage))<1500
+        assert 'repo-b' not in json.dumps(coverage)
+    # Full operational detail remains available on demand, with pagination.
+    status=service.call('recall_status',{'limit':1})
+    assert len(status['sources'])==1 and status['next_offset']==1
+
+
+def test_compact_coverage_labels_partial_page_and_preserves_source_filter(corpus):
+    path,_=corpus; service=RecallService(path,'repo-a')
+    with read_connection(path) as c:
+        coverage=service.coverage(c, limit=1, compact=True)
+    assert coverage['source_count']==2 and coverage['checked_sources']==1 and coverage['next_offset']==1
+    assert sum(coverage['checked_source_states'].values())==1
+    scoped=service.call('recall_search',{'query':'decision','source':'codex:rejected'})['coverage']
+    assert scoped['source_count']==scoped['checked_sources']==1 and scoped['next_offset'] is None
+
+
 def test_get_and_source_filters_enforce_scope(corpus):
     path,ids=corpus; service=RecallService(path,'repo-a')
     with pytest.raises(ValueError,match='Unknown block in this repository'):

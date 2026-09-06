@@ -19,7 +19,7 @@ import memory_store as memory
 from recall_mcp import RecallService
 
 ROOT = Path(__file__).resolve().parents[1]
-READER_FILES = ('recall_mcp.py', 'memory_store.py', 'db.py', 'utils.py')
+READER_FILES = ('recall_mcp.py', 'memory_store.py', 'db.py', 'utils.py', 'recall_diagnostics.py')
 APP_SKILL = '''---
 name: recall
 description: Recover previous decisions, commands and discussions from the connected Recall repository. Use when earlier work matters, the user asks what was decided last time, or context needs recovery.
@@ -55,7 +55,7 @@ user-selected evidence export rather than uploading the whole store.
 '''
 
 
-def prepare(output, db_path, repo_id, python, name='recall-reader'):
+def prepare(output, db_path, repo_id, python, name='recall-reader', diagnostics=None):
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,59}', name):
         raise ValueError('Name must start with a lowercase letter and contain only lowercase letters, digits or hyphens (max 60).')
     output = Path(output).expanduser().absolute()
@@ -84,6 +84,13 @@ def prepare(output, db_path, repo_id, python, name='recall-reader'):
     payload['.claude-plugin/plugin.json'] = (json.dumps(manifest, indent=2)+'\n').encode()
     server = {'command': str(python), 'args': ['-S', '${CLAUDE_PLUGIN_ROOT}/scripts/recall_mcp.py',
               '--db', str(db_path), '--repo-id', repo_id]}
+    if diagnostics is not None:
+        diagnostics = Path(diagnostics).expanduser().absolute()
+        if not diagnostics.parent.is_dir():
+            raise ValueError('Diagnostics parent directory must already exist')
+        if diagnostics.resolve() == db_path:
+            raise ValueError('Diagnostics must use a separate log file')
+        server['args'].extend(['--diagnostics', str(diagnostics)])
     payload['.mcp.json'] = (json.dumps({'mcpServers': {plugin_reader: server}}, indent=2)+'\n').encode()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     plugin = output/name
@@ -101,6 +108,7 @@ def prepare(output, db_path, repo_id, python, name='recall-reader'):
     receipt = {'version': version, 'repo_id': repo_id, 'db_path': str(db_path),
                'source_count': coverage['source_count'], 'python': str(python),
                'installed': False, 'app_restarted': False, 'contains_history': False,
+               'diagnostics': str(diagnostics) if diagnostics is not None else None,
                'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
                'files': {n: hashlib.sha256(b).hexdigest() for n,b in payload.items()}}
     (output/'BUILD.json').write_text(json.dumps(receipt, indent=2)+'\n')
@@ -127,11 +135,12 @@ def main():
     scope.add_argument('--cwd', type=Path)
     parser.add_argument('--python', type=Path, default=Path(sys.executable))
     parser.add_argument('--name', default='recall-reader')
+    parser.add_argument('--diagnostics', type=Path, help='Opt in to bounded local metrics for this reader; no queries/history or network upload')
     args = parser.parse_args()
     try:
         if args.cwd and not args.cwd.is_dir():
             raise ValueError('--cwd must be an existing project directory')
-        result = prepare(args.output, args.db, args.repo_id or memory.repository_identity(args.cwd), args.python, args.name)
+        result = prepare(args.output, args.db, args.repo_id or memory.repository_identity(args.cwd), args.python, args.name, args.diagnostics)
     except (ValueError, OSError, sqlite3.Error, subprocess.SubprocessError) as exc:
         parser.exit(1, str(exc)+'\n')
     print(json.dumps(result, indent=2))

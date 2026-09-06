@@ -14,6 +14,7 @@ import time
 
 from db import get_connection
 import memory_store as memory
+from recall_diagnostics import Diagnostics
 
 
 class CaptureWorker:
@@ -101,15 +102,20 @@ def main():
     p.add_argument('--watch', action='store_true', help='Continue in the foreground until interrupted')
     p.add_argument('--recursive', action='store_true', help='Include Claude subdirectories; Codex date directories are always searched')
     p.add_argument('--interval', type=positive, default=10, help='Seconds between cycles in watch mode; default 10')
+    p.add_argument('--diagnostics', type=Path, help='Opt-in bounded local metrics log; no source paths or transcript text')
     args = p.parse_args()
     for root in args.path:
         if not root.expanduser().exists():
             p.error('Source path does not exist: ' + str(root))
     conn = get_connection(args.db.expanduser())
     worker = CaptureWorker(conn, args.path, args.agent, recursive=args.recursive)
+    diagnostics = Diagnostics(args.diagnostics)
     try:
         while True:
             result = worker.refresh(args.seconds)
+            diagnostics.record('capture', 'capture_errors' if result['errors'] else 'ok', result['seconds']*1000,
+                passes=result['passes'], blocks_updated=result['blocks_updated'],
+                pending_files=result['pending_files'], error_count=len(result['errors']))
             print(json.dumps(result), flush=True)
             if not args.watch:
                 # Incomplete progress is visible in JSON; missing/unreadable inputs fail the invocation.
