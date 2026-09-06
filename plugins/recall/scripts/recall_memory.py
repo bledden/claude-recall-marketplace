@@ -373,7 +373,7 @@ def main(argv=None):
         error = {'error': str(exc)}
         access_codes = {sqlite3.SQLITE_CANTOPEN, sqlite3.SQLITE_READONLY, sqlite3.SQLITE_PERM}
         code = getattr(exc, 'sqlite_errorcode', 0) or 0
-        if read_only and isinstance(exc, FileNotFoundError):
+        if read_only and conn is None and isinstance(exc, FileNotFoundError):
             error.update(code='store_missing', next_action='No store at this path. Reads never create one; check --db/RECALL_DB or capture/import the intended history first.')
         elif read_only and (isinstance(exc, PermissionError) or (code & 255) in access_codes):
             error.update(code='store_access', next_action=(

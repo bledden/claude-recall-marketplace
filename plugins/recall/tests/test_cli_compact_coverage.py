@@ -76,3 +76,15 @@ def test_missing_store_read_has_a_code(tmp_path):
                        capture_output=True, text=True, timeout=60)
     body = json.loads(p.stdout or p.stderr)
     assert p.returncode == 1 and body['code'] == 'store_missing' and not (tmp_path / 'absent.db').exists()
+
+
+def test_missing_search_dependency_is_not_reported_as_missing_store(store, monkeypatch, capsys):
+    import recall_memory
+    _, tmp = store
+    def missing_dependency(*args):
+        raise FileNotFoundError('Optional model file disappeared')
+    monkeypatch.setattr(recall_memory, 'run', missing_dependency)
+    assert recall_memory.main(['--db', str(tmp / 'store.db'), 'search', 'decision', '--semantic']) == 1
+    error = json.loads(capsys.readouterr().err)
+    assert error['error'] == 'Optional model file disappeared'
+    assert error.get('code') != 'store_missing'

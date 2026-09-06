@@ -734,7 +734,9 @@ skills state that doctor needs write access even without --repair: connection
 setup may migrate, integrity checks use FTS insert commands, and it records an
 invocation. Status/sources remain the read-only diagnostic path.
 
-723 tests pass in 12.82 seconds. Six fixed operational queries against the frozen
+An additional error-boundary case ensures a missing optional search dependency
+is not misreported as a missing store; store_missing is reserved for opening the
+store itself. 724 tests pass on the final integration. Six fixed operational queries against the frozen
 P72 scratch store (pure relevance to avoid timing drift) preserve identical hits
 and reduce median CLI search output from 9411.5 to 3284.5 o200k_base tokens. These
 are output-size proxies, not billing or human quality measures. No P10 packet was
