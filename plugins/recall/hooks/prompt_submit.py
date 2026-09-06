@@ -145,6 +145,11 @@ def parse_transcript_from_offset(
 
                 if not isinstance(entry, dict):
                     continue
+                if entry.get('isMeta') or entry.get('isCompactSummary'):
+                    # Host-rendered skills and synthetic compaction summaries are
+                    # not user turns. Preserve the actual turn across these records;
+                    # offsets still advance, including a host-only capped pass.
+                    continue
                 role = entry.get('type', '') or entry.get('role', '')
                 if role not in ('user', 'assistant'):
                     role = (entry.get('message') or {}).get('role', '')

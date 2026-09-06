@@ -12,7 +12,7 @@ do not certify automatic capture or human answer quality.
 |---|---|---|
 | Claude Code, including Code sessions launched by the app | Existing Recall plugin hooks/skill or scoped MCP | Hooks verified in Code; a particular app-launched session must actually load the plugin |
 | Desktop **Chat** | Local stdio MCP entry in Desktop configuration | Not implemented; reading indexed Code/Codex/Cowork history does not capture the current chat |
-| **Cowork with a connected Mac** | Observed `remote-devices` bridge to the local MCP reader; plugin carries the recall skill and a separate local connector | Two local Cowork transcript prefixes imported successfully through the Claude adapter into a scratch store; no automatic watcher or Cowork hook delivery verified |
+| **Cowork with a connected Mac** | Observed `remote-devices` bridge to the local MCP reader; plugin carries the recall skill and a separate local connector | Selected local Claude-shaped JSONL files can be refreshed/watched with explicit host mapping; two real prefixes and appended records verified. New cloud-only tasks have no verified transcript source; no Cowork hook delivery claimed |
 | **Standalone cloud Cowork, without a connected Mac reader** | Not provided by this host-local stdio package | Not implemented; no implicit account-history access or host-store upload |
 
 Anthropic documents that plugins carry skills across chat and Cowork, while hooks
@@ -50,7 +50,7 @@ python3 /path/to/recall/scripts/prepare_claude_app.py \
 Python 3.9+ with SQLite FTS5 is required. The preparer records the absolute Python
 executable; `--python /absolute/path/to/python3` selects another installed runtime.
 It checks that the store has sources in the selected scope, freezes that scope
-into the launch arguments, copies the four stdlib reader modules, and emits:
+into the launch arguments, copies the five stdlib reader modules, and emits:
 
 - `desktop-config-snippet.json`, for Desktop chat;
 - `recall-reader.zip`, with `.mcp.json`, a retrieval-only skill and the manifest
@@ -108,8 +108,24 @@ The existing explicit `recall_memory.py index FILE --agent claude --cwd PROJECT`
 can import an identified transcript. Verify `sources` afterwards: VM working
 directories do not necessarily identify the corresponding Mac repository. Use
 the explicit `rescope` command when the retained source needs a different scope.
-The foreground capture command can watch a selected file, but automatic discovery,
-new-session mapping and Cowork compaction hooks have not been validated. The app
+For ongoing capture from a known local source, explicitly map its VM context to
+the host repository:
+
+```sh
+python3 /path/to/recall/scripts/recall_capture.py --db /path/to/recall.db \
+  --agent claude --path /path/to/selected-session.jsonl --cwd /path/to/project --watch
+```
+
+The mapping stays pinned across appends and later default imports. An existing
+source in another repository is refused; inspect it and use explicit `rescope`
+first. A selected main-transcript directory can discover new files under that same
+mapping, so do not map a mixed-project directory to one repository. No watcher is
+installed automatically. Real local prefixes plus new records were exercised in a
+scratch store; that does not prove cloud-only tasks expose equivalent files.
+Current cloud-only Cowork and Desktop Chat have no verified automatic transcript
+source. They can read existing indexed history through the connected Mac. An
+export adapter needs an authorized format sample and explicit branch/attachment
+semantics before it can be advertised. Cowork compaction hooks are not verified. The app
 reader deliberately bundles no Code capture hooks that could write an unrelated
 VM store and falsely appear to share host memory.
 
@@ -118,6 +134,11 @@ VM store and falsely appear to share host memory.
 1. Confirm the execution surface/mode and that all four Recall tools appear.
 2. Ask naturally about a known indexed decision without naming Recall. Record
    whether the model searches, retrieves the original block and cites its offset.
+   For quotations, call get with `quote` and the cited window (optionally the earlier
+   `content_hash` as `expected_hash`); check `citation_check.valid` and exact returned
+   quote offsets. Reject a fabricated quote and a quote attached to the wrong ID.
+   Check that a requested patch is not reported as a verified resulting file state,
+   and that compatible accounts from different agents are not called contradictory.
 3. Verify the returned source agent and repository. Test another repository's
    known block ID: get must reject it. Check a false premise stays unconfirmed.
 4. Append a synthetic decision through the separate capture command; ask again in

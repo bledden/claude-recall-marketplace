@@ -629,7 +629,7 @@ def search(conn, query, limit=5, repo_id=None, source_key=None, since=None, unti
     if until:
         clauses.append('b.timestamp<?'); args.append(until)
     sql = '''SELECT c.id AS chunk_id,c.block_id,c.start_char,c.end_char,c.text,
-        b.seq,b.role,b.kind,b.timestamp,s.agent,s.session_id,s.source_key,s.repo_id,s.project_path,
+        b.seq,b.role,b.kind,b.timestamp,b.content_hash,s.agent,s.session_id,s.source_key,s.repo_id,s.project_path,
         bm25(memory_fts) AS rank,snippet(memory_fts,0,'«','»','…',40) AS snippet
         FROM memory_fts JOIN memory_chunks c ON c.id=memory_fts.rowid
         JOIN memory_blocks b ON b.id=c.block_id JOIN memory_sources s ON s.source_key=b.source_key
@@ -654,13 +654,22 @@ def search(conn, query, limit=5, repo_id=None, source_key=None, since=None, unti
             continue
         seen.add(row['block_id'])
         row['get'] = f"get {row['block_id']} --start {row['start_char']}"
+        row['provenance'] = evidence_provenance(row['role'], row['kind'])
         result.append(row)
         if len(result) == limit:
             break
     return result
 
 
-def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0):
+def evidence_provenance(role, kind):
+    if kind == 'tool_use':
+        return 'tool_request: records arguments/intention, not successful execution or resulting file state'
+    if role == 'host':
+        return 'host_summary: generated context, not original participant testimony'
+    return role + '_record: may contain pasted reports; role alone does not establish authorship or truth'
+
+
+def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0, quote=None, expected_hash=None):
     if start < 0 or max_chars < 1 or neighbors < 0:
         raise ValueError('start/neighbors must be nonnegative and max_chars positive')
     row = conn.execute('''SELECT b.*,s.agent,s.session_id,s.repo_id,s.project_path
@@ -675,6 +684,19 @@ def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0):
     end = min(len(full), start+max_chars)
     result.update(text=full[start:end],start_char=start,end_char=end,total_chars=len(full),
                   next_start=end if end<len(full) else None)
+    result['provenance'] = evidence_provenance(row['role'], row['kind'])
+    if quote is not None or expected_hash is not None:
+        if quote is not None and (not isinstance(quote, str) or not quote):
+            raise ValueError('quote must be a nonempty string')
+        version_matches = expected_hash is None or expected_hash == row['content_hash']
+        at = full[start:end].find(quote) if quote is not None else -1
+        matched = quote is None or at >= 0
+        result['citation_check'] = {
+            'valid': version_matches and matched, 'version_matches': version_matches,
+            'quote_matches': matched if quote is not None else None,
+            'quote_start': start+at if quote is not None and at >= 0 else None,
+            'quote_end': start+at+len(quote) if quote is not None and at >= 0 else None,
+            'scope': 'Exact text in this returned window and optional content hash only; not claim correctness, authorship, execution success or immutable storage.'}
     result['neighbors'] = [dict(r) for r in conn.execute('''SELECT id,seq,role,kind,timestamp,substr(text,1,240) AS preview
         FROM memory_blocks WHERE source_key=? AND seq BETWEEN ? AND ? AND id<>? ORDER BY seq,ordinal,id''',
         (row['source_key'],row['seq']-neighbors,row['seq']+neighbors,block_id))] if neighbors else []
@@ -721,7 +743,7 @@ def brief(conn, repo_id=None, source_key=None, limit=8, since=None):
             where.append(field+'=?'); args.append(value)
     if since:
         where.append('b.timestamp>=?'); args.append(since)
-    base = '''SELECT b.id,b.seq,b.role,b.kind,b.timestamp,b.text,s.agent,s.session_id,s.repo_id
+    base = '''SELECT b.id,b.seq,b.role,b.kind,b.timestamp,b.content_hash,b.text,s.agent,s.session_id,s.repo_id
               FROM memory_blocks b JOIN memory_sources s ON s.source_key=b.source_key'''
     # Prose only: tool-call inputs are actions, not decisions, and their text
     # (patches, commands) trips the decision-language regex. They are listed
@@ -759,6 +781,7 @@ def brief(conn, repo_id=None, source_key=None, limit=8, since=None):
             if tail_end > tail_start:
                 r['excerpts'].append({'start_char':tail_start,'text':text[tail_start:tail_end]})
         r['total_chars'] = len(text)
+        r['provenance'] = evidence_provenance(r['role'], r['kind'])
         if _HOST_METADATA_RX.search(text):   # only when a wrapper was actually removed, not for trimmed whitespace
             r['host_metadata_stripped'] = True
         output.append(r)
@@ -767,6 +790,7 @@ def brief(conn, repo_id=None, source_key=None, limit=8, since=None):
     return {'notice':'Selected historical evidence, not a complete summary or verified current state.',
             'evidence':output,'sampled':True,
             'recent_actions':[{'id':a['id'],'timestamp':a['timestamp'],'agent':a['agent'],'session_id':a['session_id'],
+                               'content_hash':a['content_hash'],'provenance':evidence_provenance(a['role'], a['kind']),
                                'text':' '.join(a['text'].split())[:200]} for a in actions]}
 
 

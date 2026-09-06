@@ -117,3 +117,19 @@ public release artifact. See `docs/claude-app.md` for the separate surface limit
 `recall_mcp.py` exposes four retrieval tools over stdio. The client chooses an explicit repository scope at launch, which applies to search, get-by-ID, brief, sources and derived counts. The server opens the existing store read-only and neither creates/migrates it nor captures transcripts, logs Recall invocations, repairs data or executes recalled commands. SQLite may use its normal WAL coordination sidecars. Capture remains a separate explicit process.
 
 This interface opens no network listener. Evidence returned to an MCP client may be sent to that client’s model provider, just like evidence retrieved by the skill/CLI. It does not make the calling host local-only. Uninstall the separately configured MCP entry and stop the foreground watcher to disable those integrations; the retained store and original transcripts are separate data to delete.
+
+### Host-record cleanup and citation checks
+
+New legacy capture skips Claude records flagged `isMeta` or `isCompactSummary`.
+Older legacy rows are not silently rewritten. `clean-legacy-host SESSION` audits
+exact timestamp/redacted-text matches against that session's registered original
+transcript; `--apply` clears only unambiguous matching prompt text and its preview,
+and updates FTS. Exchange identities, replies, commands, tags and other annotations
+remain. Original files and backups retain their contents. Derived tags can still
+reflect old text; this targeted cleanup is not a purge of every historical effect.
+
+Exact-quote/hash checks use the existing read-only get path. They add no persistent
+quotation log or network call. As with all reader results, quotes sent through a
+host agent may enter that host's model context. `recall_capture.py --cwd PROJECT`
+explicitly maps selected local transcripts to a host repository and pins the
+scope; it refuses to move an already registered foreign source implicitly.

@@ -18,9 +18,10 @@ from recall_diagnostics import Diagnostics
 
 
 class CaptureWorker:
-    def __init__(self, conn, roots, agent, recursive=False):
+    def __init__(self, conn, roots, agent, recursive=False, cwd=None):
         self.conn, self.roots, self.agent = conn, [Path(p).expanduser().resolve() for p in roots], agent
         self.recursive = recursive
+        self.cwd = str(Path(cwd).expanduser().resolve()) if cwd else ''
         self.pending = deque()
         self.signatures = {}
 
@@ -65,7 +66,22 @@ class CaptureWorker:
         while self.pending and time.monotonic() < deadline:
             path = self.pending.popleft()
             try:
-                result = memory.index_file(self.conn, path, agent=self.agent)
+                if self.cwd:
+                    sid, _ = memory.trace_metadata(path, self.agent)
+                    key = self.agent+':'+sid
+                    if self.agent == 'claude' and path.parent.name == 'subagents':
+                        key += '/'+path.stem
+                    if not self.conn.in_transaction:
+                        self.conn.execute('BEGIN IMMEDIATE')
+                    old = self.conn.execute('SELECT repo_id FROM memory_sources WHERE source_key=?', (key,)).fetchone()
+                    if old and old['repo_id'] != memory.repository_identity(self.cwd):
+                        self.conn.rollback()
+                        errors.append({'path':str(path),'state':'scope_mismatch',
+                            'next_action':'Existing source belongs to another repository; inspect it and use explicit rescope first.'})
+                        continue
+                result = memory.index_file(self.conn, path, agent=self.agent, cwd=self.cwd)
+                if self.cwd and result.get('state') != 'path_conflict':
+                    self.conn.execute('UPDATE memory_sources SET scope_pinned=1 WHERE source_key=?', (result['source'],))
                 self.conn.commit()
             except (OSError, ValueError, sqlite3.Error) as exc:
                 self.conn.rollback()
@@ -101,6 +117,7 @@ def main():
     p.add_argument('--seconds', type=positive, default=4, help='Soft budget per cycle; default 4 seconds')
     p.add_argument('--watch', action='store_true', help='Continue in the foreground until interrupted')
     p.add_argument('--recursive', action='store_true', help='Include Claude subdirectories; Codex date directories are always searched')
+    p.add_argument('--cwd', type=Path, help='Explicit host repository mapping for selected histories (e.g. Cowork VM paths); existing foreign scopes require explicit rescope')
     p.add_argument('--interval', type=positive, default=10, help='Seconds between cycles in watch mode; default 10')
     p.add_argument('--diagnostics', type=Path, help='Opt-in bounded local metrics log; no source paths or transcript text')
     args = p.parse_args()
@@ -108,7 +125,7 @@ def main():
         if not root.expanduser().exists():
             p.error('Source path does not exist: ' + str(root))
     conn = get_connection(args.db.expanduser())
-    worker = CaptureWorker(conn, args.path, args.agent, recursive=args.recursive)
+    worker = CaptureWorker(conn, args.path, args.agent, recursive=args.recursive, cwd=args.cwd)
     diagnostics = Diagnostics(args.diagnostics)
     try:
         while True:

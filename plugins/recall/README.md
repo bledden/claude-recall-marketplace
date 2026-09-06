@@ -373,6 +373,34 @@ Search looks in user prompts, assistant responses and the tool calls of each exc
 
 Durable search returns the top 5 ranked passages (`--limit` up to 50); legacy search shows up to 10 most recent matches, grouped by date.
 
+### Verify a quotation and its provenance
+
+Durable search and brief evidence carry `content_hash` and `provenance`. Before
+quoting, retrieve the relevant window and check the exact words:
+
+```sh
+python3 /path/to/recall/scripts/recall_memory.py --db /path/to/recall.db get BLOCK_ID \
+  --start 120 --max-chars 1000 --quote 'the exact words' --expected-hash CONTENT_HASH
+```
+
+MCP `recall_get` accepts the same `quote` and `expected_hash` inputs. Only cite
+`citation_check.quote_start`/`quote_end` when `valid` is true. Offsets count Unicode
+characters in retained, redacted text. The checker verifies a substring in that
+returned window and an optional prior hash; it does not establish the truth of a
+claim, successful command execution, or immutable historical revisions. An edit
+can invalidate the hash even if the quoted words survive. Re-read and correct a
+failed citation. User/assistant roles may contain pasted reports; a tool request
+records intent, while this store excludes tool output. Different agents or wording
+alone do not establish a contradiction or a shared event.
+
+Legacy capture now skips Claude records flagged `isMeta` or `isCompactSummary`.
+Existing legacy prompts can be audited against their original transcript with
+`recall_memory.py clean-legacy-host SESSION_ID`; add `--apply` after backing up to
+clear only exact, unambiguous host-prompt matches. This preserves exchange IDs,
+replies, commands and annotations. It does not rewrite original transcripts or
+repair historical turn grouping. Old stores remain unchanged until this explicit
+cleanup; unflagged wrappers are not inferred to be host records.
+
 ### 12. Observability Logging
 
 Every `/recall` invocation is logged:

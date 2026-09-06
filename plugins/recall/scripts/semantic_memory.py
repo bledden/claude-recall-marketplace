@@ -148,7 +148,7 @@ def hybrid_search(conn,query,lexical,limit=5,repo_id=None,source_key=None,since=
     if until:
         clauses.append('b.timestamp<?');args.append(until)
     rows=[dict(r) for r in conn.execute('''SELECT v.vector,c.id AS chunk_id,c.block_id,c.text,c.start_char,c.end_char,
-        b.seq,b.role,b.kind,b.timestamp,s.agent,s.session_id,s.source_key,s.repo_id,s.project_path
+        b.seq,b.role,b.kind,b.timestamp,b.content_hash,s.agent,s.session_id,s.source_key,s.repo_id,s.project_path
         FROM memory_vectors v JOIN memory_chunks c ON c.id=v.chunk_id
         JOIN memory_blocks b ON b.id=c.block_id JOIN memory_sources s ON s.source_key=b.source_key WHERE '''+' AND '.join(clauses),args)]
     if not rows:
@@ -181,6 +181,8 @@ def hybrid_search(conn,query,lexical,limit=5,repo_id=None,source_key=None,since=
         row['similarity']=float(similarities[index])
         row['snippet']=row['text'][:400]
         row['get']=f"get {key} --start {row['start_char']}"
+        from memory_store import evidence_provenance
+        row['provenance']=evidence_provenance(row['role'],row['kind'])
         candidates.setdefault(key,row)
         scores[key]=scores.get(key,0)+1/(60+rank+1)
     return [dict(candidates[key],fusion_score=scores[key])

@@ -10,7 +10,39 @@ This is the single working plan for the current update window. It includes Fable
 
 The maintainer asked Astra to take over integration and the remaining local work from Fable. Astra now owns implementation, verification, local commits, installation and distribution preparation. Fable's final P13 review landed in `6ee3b4a` while this work was underway; its two formatting fixes and the accepted compaction patch are preserved. The historical ownership table below is superseded by this paragraph.
 
-P13 is accepted. P17/P55/P61 have live installed-skill and restarted-desktop MCP evidence; P19 has Fable's fresh authenticated skill/compaction receipts. P62 now has fresh Claude and fresh ephemeral Codex MCP evidence recovering both source agents. P22 remains the maintainer's convenient refresh of stale skill text in the existing Claude session; its hooks/scripts are 2.5.0. P10 human labels/evaluation remain open. P52/P59 remain unscheduled. Publication remains held.
+P13 is accepted. P17/P55/P61 have live installed-skill and restarted-desktop MCP evidence; P19 has Fable's fresh authenticated skill/compaction receipts. P62 now has fresh Claude and fresh ephemeral Codex MCP evidence recovering both source agents. P22 remains the maintainer's convenient refresh of stale skill text in the existing Claude session; its hooks/scripts are 2.5.0. P10 human labels/evaluation remain open. P52/P59 now have explicit dispositions in the current closure map. Publication remains held.
+
+## Current closure map — September 6, caveat pass
+
+This section supersedes stale status wording in the dated evidence log. Historical
+receipts remain evidence for their measured revisions; they are not the current
+open list. The agent-owned runtime fixes and measurements from this pass are
+P79–P82 below. 733 tests pass on the completed candidate; manifest validation and the 333 MB
+capture budget pass (14.8 s backfill, 194 ms worst pass, 42 MB peak RSS).
+Final installation/test receipts are in the local
+`recall-review-2026-09-05/caveat-closure/` packet.
+
+| Owner / disposition | Rows | Current action or boundary |
+|---|---|---|
+| Maintainer | P10 | Human acceptance/corrections of the unchanged 50-case packet. Agent then runs the declared evaluation; no tuning on those labels first. General answer quality remains unproven. |
+| Maintainer, at a convenient boundary | P22 | Refresh stale Claude Code skill text. Do not interrupt an active task; installed files and newly launched readers are separate from cached session instructions. |
+| Held publication | P26/P27/P30/P32 | Push dev/marketplace, tag/release with validated asset, deploy blog, catalog pin PR, close stale PR #1, then decide 2.4.1 hotfix. Nothing is authorized remotely by this pass. |
+| Runtime work addressed | P66/P71/P79/P80 | Exact quote/hash checking, evidence provenance, flagged legacy host filtering and explicit historical cleanup. A passing model trial proves use of the mechanism, not that every future answer will obey it. P71's remaining general quality judgment is P10. |
+| Supported local capture, external source boundary | P69/P81 | Foreground capture accepts an explicit pinned host mapping for selected local Cowork JSONL. Current cloud-only Cowork and Chat have no verified transcript source/export adapter. Reading existing indexed history remains supported through the connected Mac. Do not invent an account-history capture path. |
+| Resource decision complete, quality gated | P14/P82 | Existing offline embeddings remain opt-in; CPU build/cold/warm/no-op/incremental costs measured. No live model/config/vectors enabled. A default/backend change requires demonstrated benefit under P10, not feature parity. |
+| Explicitly excluded from 2.5 | P52 | Concrete revision/generation design in [revision-evidence-design.md](revision-evidence-design.md). Current hashes detect edits; immutable revisions/atomic whole-source rebuilds are not promised. Reopen for a concrete saved-citation requirement. |
+| External data contract / separate product scope | P59/P70 | User-supplied export adapters require an authorized representative format and branch/edit/attachment semantics. Standalone remote access requires an authenticated scoped deployment contract; this release supplies local readers plus portable export/import, without a listener or implicit upload. |
+| Deliberately not added | P76 | Codex foreground refresh/watch is implemented and tested. The reported index-unavailable incident was read access/SQLite sidecars (P77), not evidence of a lifecycle-capture gap. No second hook system is added to solve that incident. Reopen only for a reproduced freshness failure that the selected watcher cannot address; never bypass host hook trust. |
+| Implemented and locally checked | All other active P01–P78 rows | Prior integration, capture/compaction budgets, restore/schema, scope/read-only access, diagnostics, token measurements and distribution fixes stand. Blog dependency work is local and checked; origin alert closure is held publication verification. Earlier “pending docs/review” wording is historical, not a hidden agent task. |
+
+### P79–P82: substantive caveat work
+
+| ID | Status / evidence | Contract |
+|---|---|---|
+| P79 | Exact quote/hash checks and provenance implemented in CLI/MCP, search/get/brief and skills; reproduces the actual wrong-ID citation as invalid and correct range as valid; fresh Claude trial used checks | Unicode offsets in returned redacted text; a hash detects changed content, not immutable history. Tool inputs prove requested actions, not execution or resulting files. P10 remains independent. |
+| P80 | Legacy parser skips isMeta/isCompactSummary without losing cursor or assistant continuation; explicit cleanup matched 207 host prompts in a backup rehearsal with IDs/replies/tools/annotations/durable data preserved | Match original timestamp plus exact redacted capped prompt; skip ambiguous real-user duplicates; transaction locks before selecting FTS delete payload. Live application and backup recorded in the closure receipt. Old transcripts/backups/tags are not purged. |
+| P81 | Explicit --cwd mapping in independent capture, scope pinning and foreign-scope refusal; two real Cowork prefixes and appended records exercised in scratch stores; a foreground CLI watch also captured initial/appended/new-file records under one pinned host scope | Selected local sources only. This is not automatic capture of new cloud-only app tasks, nor a Cowork compaction hook claim. |
+| P82 | Same-snapshot token rerun and cached-model CPU resource probe; full resource details in product-direction.md and local raw JSON | Five-hit search + 2,000-char get median: Recall 4,391.5 → 4,820.5 proxy tokens; triton 2,108.5 → 2,550. Extra hashes/provenance/check guidance have a cost. Exact check adds 65–67 output proxy tokens in two sampled gets. Static MCP schema 759 → 850, Code skill 3,603 → 3,725. No provider savings or human quality claim. |
 
 ## Starting state
 
@@ -92,20 +124,20 @@ These are tracked design decisions for this window, not implicit promises to add
 | `commands/` to skill migration | Closed by Fable's v2.4; verify end-to-end operation after installation | P19/P22 |
 | BM25 vs recency-first search | Measure on the new evaluation; preserve an explicit recency control and exact-query behavior | P10–P12 |
 | Verbatim compaction recovery | Bring into the active update plan | P16 |
-| Lite/Standard/Enhanced tier system | Proposed retirement in favor of one durable SQLite core with optional semantic commands; review old branch before finalizing | P02/P03 |
-| Lite JSON storage and tier-transition follow-ups | Superseded if the tier system is retired; replace their data-preservation objective with backup, restore and upgrade checks | P02/P09/P21 |
-| MLX/ONNX/TF-IDF fallback chain | Proposed retirement for this architecture; one backend avoids untested capability claims | P02/P14 |
-| ONNX export, tokenizer, download and hash-verification follow-up | Explicitly retire with the ONNX backend unless P14 provides a concrete need; no hidden incomplete download path | P02/P14 |
-| First-run backend detection, tier consent and global tier settings | Replace with explicit optional-build configuration and honest dependency/model diagnostics | P08/P14/P23 |
-| Checkpoint embedding in hooks | Replace with an explicit resumable build/refresh path that keeps capture independent of inference; assess background scheduling only if P17 requires it | P07/P14/P17 |
-| Semantic compaction selection | Evaluate after lexical compaction recovery; do not make it a prerequisite or claim it works without measurement | P12/P14/P16 |
-| Semantic highlight matching | Decide against existing keyword sharing using the same evaluation discipline; retain keyword behavior unless a tested benefit justifies implementation | P02/P10/P14 |
-| Silent proactive surfacing | Keep disabled; close with an explicit decision and rationale after measuring relevance, repetition and context cost. No dormant feature may be advertised as effective | P02/P13/P16 |
-| Per-connection check/delivery overrides | Inspect current configuration support. Implement if needed for the intended sharing workflow; otherwise explicitly retire this historical suggestion with rationale | P02/P03 |
-| Reranking and approximate vector indexes | Add only for a demonstrated quality or scale problem; otherwise record why the current approach is sufficient | P07/P11/P14 |
-| Additional agent adapters beyond Claude/Codex | Inventory as expansion candidates from the original comparison, not existing capabilities; decide whether there is a concrete source/workflow to support before claiming multi-agent coverage beyond the two adapters | P02/P17 |
-| Cross-machine sharing / remote dataset publishing | Resolve the portable local backup/export/restore foundation first. Record a separate design decision on synchronization, identity conflicts and explicit data publication; no upload is implied by this update | P02/P09/P26 |
-| MCP recall/get tools | Assess host integration need as part of operational Codex/Claude support; avoid a second retrieval implementation | P17/P19 |
+| Lite/Standard/Enhanced tier system | Retired after branch audit: one durable SQLite core and explicit optional semantic commands replace tiers | P02/P03 |
+| Lite JSON storage and tier-transition follow-ups | Retired with tiers; backup/restore/upgrade and portable export/import fulfill the data-preservation objective | P02/P09/P21 |
+| MLX/ONNX/TF-IDF fallback chain | Retired: retain the single tested offline backend rather than advertise several unvalidated fallbacks | P02/P14 |
+| ONNX export, tokenizer, download and hash-verification follow-up | Retired with ONNX; no model download is implemented or required by the chosen local-model contract | P02/P14 |
+| First-run backend detection, tier consent and global tier settings | Closed: explicit local-model build/configuration and diagnostics replace detection and tier consent | P08/P14/P23 |
+| Checkpoint embedding in hooks | Closed: explicit resumable semantic-build; models remain outside hooks, no inference scheduler added | P07/P14/P17 |
+| Semantic compaction selection | Not selected for 2.5: lexical compaction recovery works within budget; semantic selection needs a measured benefit under P10 before a new implementation | P12/P14/P16 |
+| Semantic highlight matching | Keep keyword sharing; semantic highlight matching is not selected without human-reviewed evidence of a missed workflow | P02/P10/P14 |
+| Silent proactive surfacing | Keep optional proactive features off by default: relevance/repetition benefit is unproven and unsolicited context costs tokens. Natural skill selection remains available | P02/P13/P16 |
+| Per-connection check/delivery overrides | Closed: current manage_connections.py supports per-connection check_mode/delivery_mode. Additional semantic-specific overrides retire with the old tier architecture | P02/P03 |
+| Reranking and approximate vector indexes | Not selected: no demonstrated scale/quality failure requiring ANN or a reranker; live vectors are zero and the optional backend remains an experiment | P07/P11/P14 |
+| Additional agent adapters beyond Claude/Codex | Claude/Codex adapters are supported; observed local Cowork uses the Claude format. Other adapters require a concrete authorized source contract (P59/P69), not parity work | P02/P17 |
+| Cross-machine sharing / remote dataset publishing | Portable backup/export/import/restore implemented; automatic synchronization and remote publishing excluded from 2.5 pending separate identity/authentication/publication contracts (P70) | P02/P09/P26 |
+| MCP recall/get tools | Closed: four scoped read-only MCP tools share the durable core and have actual Claude/Codex/Chat/Cowork receipts | P17/P19 |
 | Blog dependency alerts | Included as release work, including integration and remote verification | P24/P26 |
 
 ## How this plan stays current

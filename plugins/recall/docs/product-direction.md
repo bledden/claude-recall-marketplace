@@ -22,3 +22,22 @@ Reassess the optional path using retrieval benefit and cold/warm latency, peak m
 index size, refresh cost and context use. As of the September 6 live-store check,
 the everyday store has no configured semantic model and zero vectors: earlier
 builds were evaluation fixtures. Current MCP readers expose lexical retrieval.
+
+## Resource evidence from the September update
+
+A resource-only CPU probe of the existing cached BGE-small-en-v1.5 model used
+250 retained blocks / 479 passages: 17.86 s build, 979 MiB peak process RSS,
+718.5 KiB packed vector payload and 964 KiB database growth. The baseline database
+also contained legacy data, so its total size is not a pure embedding-index cost.
+A fresh query process took 2.99 s for its first hybrid query; subsequent queries
+had a 13.47 ms median versus 0.95 ms lexical. Query peak RSS was 635 MiB.
+A no-change build took 59 ms / 28 MiB without loading inference; one new short
+block in a fresh process took 3.03 s / 630 MiB. These are one-machine resource
+measurements, not retrieval quality scores or universal latency bounds.
+
+Keep the single existing offline backend opt-in and keep models out of capture
+hooks. Current live readers use lexical retrieval; no live semantic build has
+been enabled. A user who enables semantic CLI retrieval accepts the measured
+cold-start/runtime cost. Broader human-reviewed benefit remains P10. An embedding
+model can qualify as lightweight for a demanding recovery workflow, but that
+judgment requires both benefit and resource evidence.

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - Unreleased
 
 ### Added
+- Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; old revisions are not retained (P79/P71).
+- Legacy capture skips flagged Claude skill bodies and compaction summaries; `clean-legacy-host SESSION [--apply]` audits/removes proven historical host prompt text without renumbering exchanges or changing replies, commands or annotations (P80/P66).
+- Explicit host repository mapping for foreground capture via `--cwd`, pinned across subsequent imports and refusing implicit movement of existing foreign sources. Two real local Cowork prefixes plus appended records verified; cloud-only app capture remains unsupported (P81/P69).
 - Opt-in local operational diagnostics for MCP readers and independent capture: fixed categories and numeric timings/counts only, no query/history text or network upload, two bounded 1 MiB segments, nonblocking writer coordination and failure isolation. App packaging can explicitly enable it per reader.
 - A local token/context-size benchmark separates tokenizer proxies, returned evidence, static skill/schema overhead and full-history size references; it does not consume the human evaluation packet or claim provider-billed savings.
 - P72 integration follow-up: share agent-aware directory discovery with independent capture, preserve Codex date-tree imports, and pass the chosen adapter to transcript detection. Four further regressions cover both Codex layouts and default/recursive Claude capture.
@@ -17,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Claude records flagged `isMeta` (the rendered body of a skill or slash command) are excluded by policy instead of being retained as the user's words; a compaction summary (`isCompactSummary`) is retained under role `host`, searchable but never quoted by `brief` or compaction recovery as the opening ask or recent context (found on a real compaction receipt, P65).
 - MCP tool errors distinguish the 2-second query budget and a busy store from a store that needs maintenance (P64).
 - Codex skill resolves the actual target repository with explicit `--cwd` and checks source coverage when the desktop task starts in a parent directory (P63).
-- Existing block role metadata is corrected during explicit rebuild, including unchanged Claude host summaries; prior durable metadata needs rebuild to be removed. Legacy exchanges retain their prior host-prompt behavior.
+- Existing block role metadata is corrected during explicit rebuild, including unchanged Claude host summaries; prior durable metadata needs rebuild to be removed. Existing legacy host prompts require the explicit cleanup described below.
 - `index DIR` sweeps only the main transcripts at the top of a project directory; `--recursive` opts into per-session subdirectories, where subagent transcripts (which carry the parent's sessionId) get their own source key and workflow journals are skipped. A file that claims an already-registered source's identity is refused (`path_conflict`) instead of being read against that source's cursor (P72).
 - Independent foreground capture/refresh of explicitly selected Claude/Codex histories, with fair incremental progress, new-file/append detection and no automatic background-service installation.
 - Complete redacted source blocks with stable references, chunked lexical search, exact paginated retrieval and neighboring-block references. Legacy capped exchanges remain compatible.
