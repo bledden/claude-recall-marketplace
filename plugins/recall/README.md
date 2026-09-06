@@ -581,7 +581,7 @@ claude-recall-plugin/
 │   ├── manage_sessions.py           # Session list, prune, export, stats
 │   ├── fetch_exchanges.py           # Fetch exchanges by query
 │   └── show_index.py                # Paginated index display
-├── tests/                          # 584 tests: unit + integration + skill evals + external-review regressions
+├── tests/                          # 645 tests: unit + integration + skill evals + external-review regressions
 │                                    #   + stress (scale/concurrent/clear/sharing)
 │                                    #   run with `python3 -m pytest -q` (see pytest.ini)
 ├── pytest.ini                      # Collects test_*.py AND stress_test_*.py
@@ -603,7 +603,7 @@ claude-recall-plugin/
 ```bash
 cd claude-recall-plugin
 
-# Full suite — unit, integration, and stress (584 tests)
+# Full suite — unit, integration, and stress (645 tests)
 # pytest.ini collects both test_*.py and stress_test_*.py
 python3 -m pytest -q
 ```
@@ -653,6 +653,7 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 - **Claude Cowork requires zip upload** — Cowork does not yet support marketplace installation; upload the plugin zip file manually via the Plugins sidebar
 - **VSCode extension requires marketplace** — Due to a [breaking change in 2.1.x](https://github.com/anthropics/claude-code/issues/17089), the VSCode extension requires the marketplace installation method
 - **Experimental semantic search** — Default retrieval uses SQLite FTS5 (BM25 × 30-day recency). Optional local embeddings require a separate dependency and explicit build; the current small evaluation does not justify enabling them by default
+- **Attachment references are not attachment bodies** — a Codex rollout that only names an attachment path cannot supply its contents to Recall. Pasted reports keep the role recorded in the transcript.
 - **Source edit detection is windowed** — only the first 256 bytes and the 256 bytes before the saved cursor are hashed; an edit between them is not detected until an explicit rebuild
 - **Codex capture is polling, not a hook** — with `codex_import` on, new Codex work becomes recallable at the next Claude session start, not mid-turn
 - **Cross-session sharing is polling-based** — No real-time push; highlights appear on the next check interval or via `/recall inbox`
