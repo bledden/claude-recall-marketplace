@@ -52,8 +52,8 @@ The four tools are `recall_search`, `recall_get`, `recall_brief` and `recall_sta
 
 | Client or source | Retrieval | Capture | Evidence still needed |
 |---|---|---|---|
-| Claude Code | Existing skill; real CLI MCP health check reports Connected | Existing hooks; optional explicit refresh/watch | Authenticated natural MCP/skill use and actual compact receipt in the working terminal |
-| Codex | Installed skill discovered and exercised in a live desktop task; MCP configuration supported by its host | Existing Codex adapter; independent foreground refresh/watch | Fresh desktop-task MCP discovery and natural model use |
+| Claude Code | Fresh authenticated skill and MCP search/get/citations verified; real compact context delivery observed | Existing hooks; optional explicit refresh/watch | Working session still needs refreshed skill text when convenient |
+| Codex | Installed skill and all four MCP tools exercised after desktop restart; fresh bundled CLI MCP trial recorded | Existing Codex adapter; independent foreground refresh/watch | Fresh ephemeral CLI context passed the paired fixture; ongoing capture remains explicit |
 | Official Python MCP SDK 2.1.1 | Independent client negotiated 2025-11-25; search/get/brief/status and scope checks passed | Observed an appended Codex record from the independent watcher through the same reader | This is protocol verification, not a model-quality score |
 | Other coding clients with compatible stdio MCP support | Same endpoint/configuration contract; individual hosts not yet tested | Only Claude and Codex source formats are currently ingested | Host-specific discovery/behavior; any new transcript adapter needs format evidence and tests |
 
@@ -68,3 +68,5 @@ The stdio implementation supports the 2024-11-05 through 2025-11-25 revisions li
 Recall itself makes no network requests. Retrieved evidence goes to the calling host and may be sent to its configured model provider. A read-only tool annotation does not make recalled text trustworthy instructions or make cloud inference local.
 
 ChatGPT web access and ChatGPT export ingestion remain separate decisions (P59). The present implementation opens no HTTP port and does not imply access to account chat history. Additional transcript formats are also separate from allowing another client to read existing Claude/Codex evidence. P58/P60–P62 track the active implementation, host checks and cross-agent handoffs; the original activation, human-evaluation and publication gates remain.
+
+When task cwd is a parent folder such as Documents, the installed Codex skill uses the actual target repository with CLI `--cwd` and checks returned coverage. MCP scope remains fixed at launch. New capture excludes Claude `isMeta` bodies and labels Claude compaction summaries `host`; get/search may return those summaries, while brief/recovery never select them. Older sources require an explicit rebuild for reclassification.

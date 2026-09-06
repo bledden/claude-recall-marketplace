@@ -581,7 +581,7 @@ claude-recall-plugin/
 │   ├── manage_sessions.py           # Session list, prune, export, stats
 │   ├── fetch_exchanges.py           # Fetch exchanges by query
 │   └── show_index.py                # Paginated index display
-├── tests/                          # 671 tests: unit + integration + skill evals + external-review regressions
+├── tests/                          # 680 tests: unit + integration + skill evals + external-review regressions
 │                                    #   + stress (scale/concurrent/clear/sharing)
 │                                    #   run with `python3 -m pytest -q` (see pytest.ini)
 ├── pytest.ini                      # Collects test_*.py AND stress_test_*.py
@@ -603,7 +603,7 @@ claude-recall-plugin/
 ```bash
 cd claude-recall-plugin
 
-# Full suite — unit, integration, and stress (671 tests)
+# Full suite — unit, integration, and stress (680 tests)
 # pytest.ini collects both test_*.py and stress_test_*.py
 python3 -m pytest -q
 ```
@@ -717,6 +717,10 @@ MIT License - see LICENSE file for details.
 `/recall index /explicit/path --agent claude` (or `codex`) imports a file or JSONL directory. Imports are resumable and idempotent, and never sweep personal history directories implicitly. Normal Claude hooks capture durable blocks too. Existing indexed sessions backfill as their hooks run, or through an explicit import. Missing original files leave retained text readable; old truncated rows cannot restore text that is no longer available in a transcript.
 
 Repository identity uses a normalized Git remote when available, then the common Git directory, then the directory path. This groups worktrees and SSH/HTTPS checkouts of the same remote. Agent/session identities stay separate. Codex support currently imports `response_item` messages/tool calls and the older top-level `message` format; mirrored events, internal instructions and reasoning are excluded. Continuous Codex capture is not installed automatically.
+
+For a desktop task opened in a parent folder, pass the actual working repository to `recall_memory.py search QUERY --cwd /path/to/repo` (or `brief --cwd`). Inspect the returned source coverage before relying on hits. A task title does not set scope, and a Documents-scoped MCP server keeps its launch-time scope. The Codex skill now explains this distinction; a missing source requires an explicitly selected import or refresh, not a global search workaround.
+
+Claude host-rendered skill/command bodies (`isMeta`) are excluded by new durable capture. Claude compaction summaries (`isCompactSummary`) are searchable under role `host`; brief and compaction recovery select only user/assistant prose. Codex compaction summaries remain excluded. Existing sources need an explicit rebuild to apply these classifications; legacy capped exchanges still retain host prompts.
 
 `/recall status` and `/recall doctor` show capture time, backlog, why records were skipped (`excluded_by_policy`, `metadata_records`, `unsupported` with the record types, `malformed`), missing/changed sources, database checks, and one concrete next action per source. `sources --offset N` continues a source listing. A changed source is never overwritten silently: `index PATH --agent AGENT --rebuild` starts a new generation and rescans from byte 0. Messages the rescan has not reached keep their old text until the rescan reaches end of file, when anything the file no longer contains is deleted; a message whose id is unchanged but whose text changed is replaced at the moment the rescan reaches it. An interrupted rebuild resumes on the next index pass, also after a transient source-changed state, and `rescope AGENT:SESSION --cwd DIR` pins a corrected repository scope against later passes (`--auto` unpins). During a rebuild, results can mix old and new content; a block id resolves to its latest indexed text, not to an immutable snapshot.
 

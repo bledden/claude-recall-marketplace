@@ -58,7 +58,7 @@ def build_recovery_context(conn, session_id: str) -> Optional[str]:
     # wrappers after leading whitespace or after the user's own words.
     columns = ("SELECT id, role, timestamp, substr(text, %s) AS text, length(text) AS total, "
                "instr(CAST(text AS BLOB), x'00') AS has_nul, instr(text, '<') > 0 AS maybe_meta "
-               "FROM memory_blocks WHERE source_key=? AND kind='text' ")
+               "FROM memory_blocks WHERE source_key=? AND kind='text' AND role IN ('user','assistant') ")
     user_candidates = conn.execute(columns % '1, ?' + "AND role='user' ORDER BY seq, ordinal LIMIT 8",
                                    (RECOVERY_OBJECTIVE_CHARS, key)).fetchall()
     recent_candidates = conn.execute(columns % '-?' + "ORDER BY seq DESC, ordinal DESC LIMIT 8",

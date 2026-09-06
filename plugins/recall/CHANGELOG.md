@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
+- Claude records flagged `isMeta` (the rendered body of a skill or slash command) are excluded by policy instead of being retained as the user's words; a compaction summary (`isCompactSummary`) is retained under role `host`, searchable but never quoted by `brief` or compaction recovery as the opening ask or recent context (found on a real compaction receipt, P65).
+- MCP tool errors distinguish the 2-second query budget and a busy store from a store that needs maintenance (P64).
+- Codex skill resolves the actual target repository with explicit `--cwd` and checks source coverage when the desktop task starts in a parent directory (P63).
+- Existing block role metadata is corrected during explicit rebuild, including unchanged Claude host summaries; prior durable metadata needs rebuild to be removed. Legacy exchanges retain their prior host-prompt behavior.
 - Independent foreground capture/refresh of explicitly selected Claude/Codex histories, with fair incremental progress, new-file/append detection and no automatic background-service installation.
 - Complete redacted source blocks with stable references, chunked lexical search, exact paginated retrieval and neighboring-block references. Legacy capped exchanges remain compatible.
 - Explicit, resumable Claude/Codex transcript imports with normalized repository identity across worktrees and remote URL protocols.

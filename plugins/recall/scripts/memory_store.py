@@ -211,7 +211,7 @@ def repair_schema(conn):
 def classify_skipped(entry, agent):
     """Why a record produced no block: 'metadata' (no content by nature),
     'excluded' (content deliberately not retained: tool results, reasoning,
-    mirrored events, compaction summaries, developer/system messages, thinking/image-only turns)
+    mirrored events, Codex compaction summaries, Claude isMeta bodies, developer/system messages, thinking/image-only turns)
     or 'unsupported' (a shape the adapter does not recognise)."""
     typ = entry.get('type')
     if typ in _METADATA_TYPES.get(agent, set()):
@@ -229,6 +229,8 @@ def classify_skipped(entry, agent):
         if typ == 'response_item' and ptype == 'message':
             return 'excluded'          # a message whose blocks were all non-text (images etc.)
         return 'unsupported'
+    if agent != 'codex' and entry.get('isMeta'):
+        return 'excluded'          # rendered skill/command body (P65)
     message = entry.get('message') if isinstance(entry.get('message'), dict) else None
     if typ in ('user', 'assistant') and message is not None:
         content = message.get('content')
@@ -306,12 +308,21 @@ def normalize_record(entry, agent):
                 value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)), 0
             return
     else:
+        if entry.get('isMeta'):
+            # Claude Code writes the rendered body of a skill or slash command as a
+            # user record flagged isMeta: host instructions, not the user's words.
+            # Excluded by policy like system/developer messages (P65).
+            return
         message = entry.get('message') or {}
     if not isinstance(message, dict):
         return
     role = message.get('role') or entry.get('type')
     if role not in ('user', 'assistant') or message.get('channel') == 'analysis':
         return
+    if agent != 'codex' and entry.get('isCompactSummary'):
+        # The host's compaction summary: retained and searchable, but presented under
+        # role 'host' so brief/compaction never quote it as the user's own words.
+        role = 'host'
     content = message.get('content') or []
     if isinstance(content, str):
         content = [{'type': 'text', 'text': content}]
@@ -340,8 +351,8 @@ def _store_block(conn, source_key, key, seq, role, kind, timestamp, text, ordina
     if existing and existing[0] == content_hash:
         # Unchanged: mark it as seen by the current (re)build generation and give
         # it its position in the current scan (R08: a rebuild renumbers).
-        conn.execute('UPDATE memory_blocks SET generation=?,start_byte=?,end_byte=?,seq=? WHERE id=?',
-                     (generation, start, end, seq, block_id))
+        conn.execute('UPDATE memory_blocks SET generation=?,start_byte=?,end_byte=?,seq=?,role=?,timestamp=? WHERE id=?',
+                     (generation, start, end, seq, role, timestamp, block_id))
         return 0
     if existing:
         conn.execute('DELETE FROM memory_chunks WHERE block_id=?', (block_id,))
@@ -349,7 +360,7 @@ def _store_block(conn, source_key, key, seq, role, kind, timestamp, text, ordina
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET text=excluded.text,content_hash=excluded.content_hash,
         start_byte=excluded.start_byte,end_byte=excluded.end_byte,ordinal=excluded.ordinal,generation=excluded.generation,
-        seq=excluded.seq''',
+        seq=excluded.seq,role=excluded.role,timestamp=excluded.timestamp''',
         (block_id, source_key, key, seq, role, kind, timestamp, text, start, end, content_hash, ordinal, generation))
     for i, (a, b, passage) in enumerate(split_passages(text)):
         conn.execute('INSERT INTO memory_chunks(block_id,ordinal,start_char,end_char,text) VALUES(?,?,?,?,?)',
@@ -668,7 +679,7 @@ def brief(conn, repo_id=None, source_key=None, limit=8, since=None):
     # Prose only: tool-call inputs are actions, not decisions, and their text
     # (patches, commands) trips the decision-language regex. They are listed
     # separately as recent_actions.
-    prose = where + ["b.kind='text'"]
+    prose = where + ["b.kind='text'", "b.role IN ('user','assistant')"]   # never the host's own summary
     scope = ' WHERE ' + ' AND '.join(prose)
     # Fetch a bounded recent pool and preserve the first ask separately.
     rows = [dict(r) for r in conn.execute(base+scope+' ORDER BY b.timestamp DESC,b.seq DESC LIMIT 100',args)
@@ -748,7 +759,7 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
             'semantic':{'chunks':chunks,'vectors':vectors,'unembedded':chunks-vectors,'vector_format':'f32le-v1'},
             'legacy_sessions':conn.execute('SELECT count(*) FROM sessions').fetchone()[0],
             'coverage_notice':'Only explicitly indexed sources are searched. Legacy capped exchanges require backfill.',
-            'skipped_meaning':{'excluded_by_policy':'content deliberately not retained: tool results, reasoning, developer/system messages, image/thinking-only turns, mirrored events, compaction summaries',
+            'skipped_meaning':{'excluded_by_policy':'content deliberately not retained: tool results, reasoning, developer/system messages, image/thinking-only turns, mirrored events, Codex compaction summaries, Claude isMeta skill/command bodies',
                                'metadata_records':'records with no conversation content (titles, modes, attachments, usage)',
                                'unsupported':'shapes the adapter does not recognise; listed per source in unsupported_types',
                                'malformed':'lines that were not valid JSON'}}

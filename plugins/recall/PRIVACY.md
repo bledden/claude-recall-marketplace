@@ -1,6 +1,6 @@
 # Privacy Policy — Claude Recall Plugin
 
-**Last updated:** September 5, 2026
+**Last updated:** September 6, 2026
 
 ## What Data Is Stored
 
@@ -9,7 +9,7 @@ The recall plugin stores conversation data locally on your machine to enable con
 | Data | Location | Purpose |
 |---|---|---|
 | Exchange text | `~/.claude/context-recall/recall.db` | User prompts (up to 1,000 chars) and assistant responses (all text blocks of the turn merged, up to 4,000 chars) for search and recall |
-| Durable blocks and passages (2.5+) | Same DB (memory tables) | Complete redacted user/assistant text and tool-call inputs, plus derived search slices. Unlike legacy exchange rows, retained blocks are not truncated |
+| Durable blocks and passages (2.5+) | Same DB (memory tables) | Complete redacted user/assistant text and tool-call inputs, Claude compaction summaries labeled `host`, plus derived search slices. Unlike legacy exchange rows, retained blocks are not truncated |
 | Tool calls (v2.4+) | Same DB (exchanges.tool_text) | One line per tool call Claude made in the turn: the shell command, the file path edited/read, the URL fetched, or the tool name (300 chars per call, 2,000 per exchange). Tool **output** is never stored |
 | Session metadata | Same DB | Session IDs, project paths, timestamps, byte offsets for incremental indexing |
 | Auto-tags | Same DB | Technical terms extracted from exchange text for search and discovery |
@@ -39,6 +39,8 @@ The default database directory is created with owner-only permissions (0o700) wh
 - Credentials that match the redaction patterns below (see Secrets Redaction; this is pattern-based, not a guarantee)
 - System information beyond project directory paths
 - Other application histories unless explicitly selected for import (Codex JSONL imports are supported)
+
+Claude `isMeta` skill/command bodies are excluded from new durable capture. Claude compaction summaries remain searchable as role `host`, but brief and compaction recovery do not select them as conversational evidence. Codex compaction summaries are excluded. These changes apply to newly indexed records; explicitly rebuild an existing source to reclassify old records and remove previously retained metadata after the rebuild finishes. Legacy exchanges still retain capped host-rendered prompts; this pre-existing limitation is separate from the durable adapter.
 
 ## Secrets Redaction
 

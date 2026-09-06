@@ -202,7 +202,15 @@ class Protocol:
                 if self.version >= '2025-06-18':
                     result['structuredContent'] = value
             except (ValueError, sqlite3.Error, OSError) as exc:
-                message = str(exc) if isinstance(exc, ValueError) else 'Store unavailable, busy, or needs maintenance. Run local status/doctor; this server never repairs or migrates.'
+                text = str(exc).lower()
+                if isinstance(exc, ValueError):
+                    message = str(exc)
+                elif 'interrupted' in text:
+                    message = 'Query exceeded the 2-second budget; narrow the query, source or limit.'
+                elif 'locked' in text or 'busy' in text:
+                    message = 'Store is busy (another process holds a write lock); retry shortly.'
+                else:
+                    message = 'Store unavailable or needs maintenance. Run local status/doctor; this server never repairs or migrates.'
                 result = {'content': [{'type': 'text', 'text': message}], 'isError': True}
         else:
             return self.error(request_id, -32601, 'Method not found')
