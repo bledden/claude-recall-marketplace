@@ -812,6 +812,39 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
                                'malformed':'lines that were not valid JSON'}}
 
 
+def semantic_coverage(conn, repo_id=None, source_key=None):
+    """Count passages/vectors in the retrieval scope, independently of its source page."""
+    clauses, args = [], []
+    for field, value in (('s.repo_id', repo_id), ('s.source_key', source_key)):
+        if value:
+            clauses.append(field+'=?'); args.append(value)
+    counts = conn.execute('''SELECT count(*), count(v.chunk_id) FROM memory_chunks c
+        JOIN memory_blocks b ON b.id=c.block_id
+        JOIN memory_sources s ON s.source_key=b.source_key
+        LEFT JOIN memory_vectors v ON v.chunk_id=c.id''' +
+        (' WHERE '+' AND '.join(clauses) if clauses else ''), args).fetchone()
+    return {'chunks': counts[0], 'vectors': counts[1], 'unembedded': counts[0]-counts[1],
+            'vector_format': 'f32le-v1'}
+
+
+def compact_coverage(status_result, repo_id=None, details=None):
+    """Counts only: the per-source listing that search/brief carried (paths, states,
+    actions) cost ~15 KB per call in Claude Code context; `status`/`sources` keep the detail."""
+    rows = status_result.get('sources', [])
+    states, skipped = {}, {}
+    for row in rows:
+        states[row['state']] = states.get(row['state'], 0) + 1
+        for kind, count in row.get('skipped', {}).items():
+            skipped[kind] = skipped.get(kind, 0) + count
+    return {'repo_id': repo_id if repo_id is not None else status_result.get('repo_id'),
+            'source_count': status_result['source_count'], 'checked_sources': len(rows),
+            'next_offset': status_result.get('next_offset'), 'checked_source_states': states,
+            'checked_backlog_bytes': sum((r.get('backlog_bytes') or 0) for r in rows),
+            'checked_skipped_records': skipped, 'semantic': status_result.get('semantic'),
+            'coverage_notice': status_result.get('coverage_notice'),
+            'details': details or 'Latest source page checked only; run `status` (and `sources --offset N`) for source paths, freshness and repair actions.'}
+
+
 def next_action(row):
     """One actionable instruction per source state (P08)."""
     key, state = row['source_key'], row['state']

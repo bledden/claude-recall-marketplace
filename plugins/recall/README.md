@@ -738,7 +738,13 @@ Optional local semantic retrieval uses one sentence-transformers backend. Instal
 
 The durable CLI's search, get, brief, status, sources, export and backup commands
 require an existing current-schema store and do not migrate it or write invocation
-counters. SQLite can still require accessible WAL sidecars for a read. If a host
+counters. `doctor` requires write access even without `--repair`: it opens the
+migration path, runs FTS integrity insert commands and records an invocation.
+Use `status` or `sources` for read-only coverage checks. Search and brief return
+compact coverage by default; add `--full-coverage` for per-source paths and actions.
+The checked-source counts cover the latest page, while semantic counts cover the
+requested repository/source. `status` and `sources --offset N` retain paginated detail.
+SQLite can still require accessible WAL sidecars for a read. If a host
 sandbox denies those, use its normal approval mechanism for the same read and scope,
 or an available Recall MCP reader with matching scope. A permission failure does
 not establish index corruption; do not rebuild or use an immutable snapshot to

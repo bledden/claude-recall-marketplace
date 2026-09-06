@@ -109,31 +109,13 @@ class RecallService:
     def coverage(self, conn, source=None, limit=20, offset=0, compact=False):
         result = memory.status(conn, self.repo_id, limit, offset, source)
         # memory.status includes global derived counts. Never disclose those through a scoped interface.
-        where, args = 's.repo_id=?', [self.repo_id]
-        if source:
-            where += ' AND s.source_key=?'; args.append(source)
-        counts = conn.execute('''SELECT count(*),count(v.chunk_id) FROM memory_chunks c
-            JOIN memory_blocks b ON b.id=c.block_id JOIN memory_sources s ON s.source_key=b.source_key
-            LEFT JOIN memory_vectors v ON v.chunk_id=c.id WHERE ''' + where, args).fetchone()
-        result['semantic'] = {'chunks': counts[0], 'vectors': counts[1], 'unembedded': counts[0]-counts[1], 'vector_format': 'f32le-v1'}
+        result['semantic'] = memory.semantic_coverage(conn, self.repo_id, source)
         result.pop('legacy_sessions', None)
         result['repo_id'] = self.repo_id
         result['capture'] = 'Read-only server: only separately indexed sources are visible.'
         if compact:
-            rows = result['sources']
-            states = {}
-            skipped = {}
-            for row in rows:
-                states[row['state']] = states.get(row['state'], 0)+1
-                for kind, count in row['skipped'].items():
-                    skipped[kind] = skipped.get(kind, 0)+count
-            return {'repo_id': self.repo_id, 'source_count': result['source_count'],
-                    'checked_sources': len(rows), 'next_offset': result['next_offset'],
-                    'checked_source_states': states,
-                    'checked_backlog_bytes': sum(r['backlog_bytes'] or 0 for r in rows),
-                    'checked_skipped_records': skipped, 'semantic': result['semantic'],
-                    'coverage_notice': result['coverage_notice'],
-                    'details': 'Latest source page checked only; use recall_status and its next_offset for source paths, freshness and repair actions. This reader does not capture new conversations.'}
+            return memory.compact_coverage(result, self.repo_id,
+                'Latest source page checked only; use recall_status and its next_offset for source paths, freshness and repair actions. This reader does not capture new conversations.')
         return result
 
     def call(self, name, arguments):

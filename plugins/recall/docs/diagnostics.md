@@ -2,6 +2,11 @@
 
 Recall has `status` and `doctor` for coverage and store troubleshooting. Persistent operational logging is optional and stays on your machine. It adds no model calls, network service or runtime dependency.
 
+Use `status` or `sources` for read-only coverage checks. `doctor` requires write
+access even without `--repair`: opening it may migrate the schema, its FTS
+integrity checks use insert commands, and it records an invocation. It is not a
+read-only fallback for a sandbox permission error.
+
 Enable it for an MCP reader by appending `--diagnostics /absolute/private-directory/recall-events.jsonl` to its launch arguments. The parent directory must already exist. Use separate filenames for separate readers if you want to distinguish them; events intentionally contain no repository or session identity. `prepare_claude_app.py` accepts the same flag and includes it in the generated Desktop snippet and Cowork plugin configuration.
 
 The independent `recall_capture.py` command also accepts `--diagnostics PATH`; it records one event per completed capture cycle. Code hooks and legacy commands are not instrumented by this option. Leave the flag out to disable all diagnostics file creation. Removing it from an already-running reader requires restarting that reader; existing local logs remain until you remove them.

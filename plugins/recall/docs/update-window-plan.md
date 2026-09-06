@@ -714,3 +714,32 @@ Chat and Mac-connected Cowork readers are now functionally active. P71's Cowork
 quotation/provenance caveat, P10 human evaluation, P22 older terminal text refresh,
 P69 app capture limits and all held publication steps remain as recorded. The
 final receipt supersedes the earlier restart-pending note above.
+
+### P78: Fable's P74/P75/P77 review integrated
+
+Fable's `e6ac4a0` patch adds compact CLI search/brief coverage shared with MCP,
+`--full-coverage` for per-source detail, and a structured `store_missing` error.
+Astra incorporated the branch's already-present worktree correction (`el` →
+`elif`) without changing that worktree. Fable's six live reads preserved the
+invocation counter (119 → 119); schema-8, missing-store, WAL snapshot and
+sandbox-sidecar probes confirmed P77's contract. His logger probes confirmed
+P74's allowlist, permissions, refusal, rotation and nonblocking-lock behavior.
+
+Astra additionally made CLI search/brief semantic counts match the selected
+repository/source via a shared counter, rather than carrying whole-store counts
+under a scoped result. A regression includes a foreign repository and an exact
+source filter in compact/full search and brief. The installed/generated Codex
+skill no longer assumes coverage.sources is present. README and both relevant
+skills state that doctor needs write access even without --repair: connection
+setup may migrate, integrity checks use FTS insert commands, and it records an
+invocation. Status/sources remain the read-only diagnostic path.
+
+723 tests pass in 12.82 seconds. Six fixed operational queries against the frozen
+P72 scratch store (pure relevance to avoid timing drift) preserve identical hits
+and reduce median CLI search output from 9411.5 to 3284.5 o200k_base tokens. These
+are output-size proxies, not billing or human quality measures. No P10 packet was
+read or used. Measurements and distribution receipts are under
+`~/Documents/recall-review-2026-09-05/p78-integration/`.
+
+P71/P10 remain open as recorded. Optional semantic retrieval and its current
+live-store activation status are unchanged. Publication stays held and last.
