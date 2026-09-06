@@ -181,6 +181,27 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     return conn
 
 
+def get_read_connection(db_path=None) -> sqlite3.Connection:
+    """Open an existing current store without WAL changes, migrations or counters.
+
+    Use normal mode=ro, never immutable: concurrent committed WAL data must remain
+    visible. SQLite may still require accessible WAL sidecars; a host restriction
+    on those is reported rather than bypassed with a stale immutable snapshot.
+    """
+    path = Path(db_path or os.environ.get('RECALL_DB') or DB_PATH).expanduser().resolve(strict=True)
+    conn = sqlite3.connect(path.as_uri()+'?mode=ro', uri=True, timeout=0.5)
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        conn.execute('BEGIN')
+        if conn.execute('PRAGMA user_version').fetchone()[0] != SCHEMA_VERSION:
+            raise ValueError('Store schema differs from this Recall version. Run the explicit local migration/doctor workflow with write access first.')
+        return conn
+    except BaseException:
+        conn.close()
+        raise
+
+
 def _apply_migrations(conn: sqlite3.Connection) -> None:
     """Bring the database up to SCHEMA_VERSION, stamping PRAGMA user_version.
 

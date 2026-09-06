@@ -55,6 +55,11 @@ def _files_created_under_home(tmp_path, argv):
         env.pop(key, None)
     payload = json.dumps({'session_id': 'leak', 'cwd': str(tmp_path), 'transcript_path': str(transcript),
                           'prompt': 'leak probe', 'last_assistant_message': 'leak answer', 'trigger': 'compact'})
+    # Read-only entry points now require an existing store. Seed the redirected
+    # fixture explicitly; retain the HOME sentinel checks around the actual call.
+    from db import get_connection
+    seed = get_connection(tmp_path / 'isolated.db')
+    seed.close()
     result = subprocess.run([sys.executable, *argv], input=payload, capture_output=True, text=True,
                             cwd=str(ROOT), env=env, timeout=60)
     assert result.returncode == 0, (argv, result.stderr[-500:])

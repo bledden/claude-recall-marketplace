@@ -736,4 +736,13 @@ Cross-agent: `config codex_import on` imports new Codex rollouts at each Claude 
 
 Optional local semantic retrieval uses one sentence-transformers backend. Install that optional package yourself and supply an existing local model directory to `/recall semantic-build --model-path /path/to/model`. No model download occurs. Searches use it only with `--semantic`; otherwise the runtime remains Python stdlib only. Models are fingerprinted, vectors are invalidated when source blocks change, and new passages require another explicit build. This is experimental pending retrieval evaluation; see `benchmarks/README.md`.
 
+The durable CLI's search, get, brief, status, sources, export and backup commands
+require an existing current-schema store and do not migrate it or write invocation
+counters. SQLite can still require accessible WAL sidecars for a read. If a host
+sandbox denies those, use its normal approval mechanism for the same read and scope,
+or an available Recall MCP reader with matching scope. A permission failure does
+not establish index corruption; do not rebuild or use an immutable snapshot to
+work around it. Current MCP readers use lexical retrieval; the semantic opt-in
+above is a CLI capability and does not activate embeddings in those readers.
+
 All new operations are available directly through `python3 scripts/recall_memory.py --help`; `--db PATH` before the operation selects an isolated store. See `docs/durable-memory.md` for rollout and validation.

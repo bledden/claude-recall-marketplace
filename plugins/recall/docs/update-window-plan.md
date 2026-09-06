@@ -658,3 +658,31 @@ terminal sessions when convenient. All publication remains held and last.
 sets lightweight local evidence recovery, inspectable citations, workflow continuity,
 deliberate scope and practical session organization as the decision criteria.
 Competitor parity alone does not promote any deferred row into implementation.
+
+### P77: Codex retrieval permission failure (maintainer report)
+
+The triton-msl task's exact query failed while opening the live database. CLI
+retrieval previously opened a writer (WAL setup/migrations) and wrote invocation
+counters. Search/get/brief/status/sources/export/backup now open an existing
+current-schema store with normal SQLite mode=ro and query_only; they neither
+migrate nor record counters. Missing stores are not created. Normal WAL reads
+preserve visibility of concurrent commits. SQLite may still need accessible WAL
+sidecars: the host sandbox can deny these even for a logical read. The CLI now
+labels that access failure and the generated Codex skill explains a same-scope
+read retry through the host approval mechanism or an available matching MCP
+reader. No permission changes, immutable snapshot workaround or automatic rebuild.
+The exact reported query succeeds through approved host access and returns the
+intended triton-msl scope. This closes the writer defect, not a promise that every
+host sandbox permits direct SQLite reads. Eleven regression cases cover all seven
+read commands, missing/old stores, concurrent committed WAL and access diagnostics.
+The full suite passes: 719 tests in 13.84 seconds. Skill frontmatter quoting was
+corrected and the generated/installed skill passes the skill validator.
+
+**Embedding clarification (P14):** optional semantic build/search is implemented.
+The explicitly named live store was checked September 6: 25 sources, no semantic
+configuration and zero vectors. Earlier semantic builds were evaluation fixtures;
+current MCP readers expose lexical search. Lightweight means measured resource
+cost relative to recovery benefit, not an exclusion of embedding models. Keep the
+optional backend available and reassess cold/warm latency, peak memory, storage,
+refresh cost, token use and human-reviewed retrieval quality before changing the
+default or extending the reader contract. P10 human labels remain pending.
