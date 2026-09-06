@@ -188,3 +188,30 @@ def test_brief_evidence_is_prose_and_tool_calls_are_listed_separately(store):
     assert all(e['kind']=='text' for e in out['evidence'])
     assert any('reject batching' in ex['text'] for e in out['evidence'] for ex in e['excerpts'])
     assert [a['text'][:4] for a in out['recent_actions']]==['Bash','Bash']
+
+
+def test_codex_compaction_summary_is_excluded_without_false_coverage_alarm(store):
+    c, tmp = store
+    original = {'type': 'response_item', 'payload': {'id': 'original', 'type': 'message', 'role': 'user',
+                'content': [{'type': 'input_text', 'text': 'Use amber for the accepted delivery label.'}]}}
+    compacted = {'type': 'compacted', 'payload': {'message': 'A synthetic summary should not become original evidence.',
+                 'replacement_history': [original], 'guardian_history': [], 'window_number': 2}}
+    p, _ = ingest(store, original, compacted, agent='codex')
+    status = m.status(c)['sources'][0]
+    assert status['skipped']['excluded_by_policy'] == 1
+    assert status['skipped']['unsupported'] == 0
+    assert status['unsupported_types'] == []
+    assert c.execute('SELECT count(*) FROM memory_blocks').fetchone()[0] == 1
+    assert m.search(c, 'synthetic summary') == []
+    assert m.search(c, 'amber')
+    # Truly new shapes must still be reported, not silently reclassified.
+    with p.open('a') as f:
+        f.write(json.dumps({'type': 'unknown_future_event', 'payload': {'text': 'unrecognised'}}) + '\n')
+    m.index_file(c, p, agent='codex', session_id='s', cwd=str(tmp)); c.commit()
+    assert m.status(c)['sources'][0]['skipped']['unsupported'] == 1
+    # Rebuild must clear the saved type names as well as the unsupported count.
+    p.write_text(json.dumps(original) + '\n' + json.dumps(compacted) + '\n')
+    m.index_file(c, p, agent='codex', session_id='s', cwd=str(tmp), rebuild=True); c.commit()
+    rebuilt = m.status(c)['sources'][0]
+    assert rebuilt['skipped']['unsupported'] == 0
+    assert rebuilt['unsupported_types'] == []

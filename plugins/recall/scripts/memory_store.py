@@ -211,12 +211,16 @@ def repair_schema(conn):
 def classify_skipped(entry, agent):
     """Why a record produced no block: 'metadata' (no content by nature),
     'excluded' (content deliberately not retained: tool results, reasoning,
-    mirrored events, developer/system messages, thinking/image-only turns)
+    mirrored events, compaction summaries, developer/system messages, thinking/image-only turns)
     or 'unsupported' (a shape the adapter does not recognise)."""
     typ = entry.get('type')
     if typ in _METADATA_TYPES.get(agent, set()):
         return 'metadata'
     if agent == 'codex':
+        # Host-generated summaries/replacement histories duplicate prior context;
+        # they are not original conversation evidence. Observed on a live desktop rollout.
+        if typ == 'compacted':
+            return 'excluded'
         payload = entry.get('payload') if isinstance(entry.get('payload'), dict) else {}
         ptype = payload.get('type')
         if typ == 'response_item' and (ptype in _EXCLUDED_PAYLOADS or payload.get('channel') == 'analysis'
@@ -451,7 +455,7 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
         return {'source': source_key, 'blocks': 0, 'offset': offset, 'state': 'source_changed', 'changed': changed}
     original = offset
     count = omitted = malformed = excluded = metadata = 0
-    unsupported_types = set(json.loads(previous['unsupported_types'] or '[]'))
+    unsupported_types = set() if rebuild else set(json.loads(previous['unsupported_types'] or '[]'))
     state = 'complete'
     seq = conn.execute('SELECT COALESCE(MAX(seq),0) FROM memory_blocks WHERE source_key=? AND generation=?',
                        (source_key, generation)).fetchone()[0]
@@ -744,7 +748,7 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
             'semantic':{'chunks':chunks,'vectors':vectors,'unembedded':chunks-vectors,'vector_format':'f32le-v1'},
             'legacy_sessions':conn.execute('SELECT count(*) FROM sessions').fetchone()[0],
             'coverage_notice':'Only explicitly indexed sources are searched. Legacy capped exchanges require backfill.',
-            'skipped_meaning':{'excluded_by_policy':'content deliberately not retained: tool results, reasoning, developer/system messages, image/thinking-only turns, mirrored events',
+            'skipped_meaning':{'excluded_by_policy':'content deliberately not retained: tool results, reasoning, developer/system messages, image/thinking-only turns, mirrored events, compaction summaries',
                                'metadata_records':'records with no conversation content (titles, modes, attachments, usage)',
                                'unsupported':'shapes the adapter does not recognise; listed per source in unsupported_types',
                                'malformed':'lines that were not valid JSON'}}

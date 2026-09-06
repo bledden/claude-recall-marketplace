@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema version 9: version 7 adds the columns above; version 8 adds the `memory_blocks(source_key, message_key)` index; version 9 adds the `(source_key, generation, seq)` index, `memory_sources.scope_pinned`, and packed little-endian float32 vectors (pre-9 JSON vectors are converted in place, invalid rows dropped). Idempotent migration tested from schema 6, 7 and a schema-5 backup.
 
 ### Fixed (update-window work)
+- Codex host compaction records are classified as deliberately excluded summaries/replacement histories instead of unsupported source formats; original conversation blocks remain the evidence. Existing stored skip counts change on an explicit rebuild.
+- The frozen evaluation runner validates source hashes and both agents’ exact labels before retrieval, gates human-review packets on recorded review, and reports unsupported legacy Codex input and inapplicable exact scores honestly.
 - Compaction excerpts also filter indented or mixed host wrappers; a tail stays within its final prose segment and retains the exact character offset.
 - **Redaction could hang the capture hook.** The v2.4.0 generic credential pattern backtracked quadratically on long no-space runs (20k chars: 7 s; 80k: hang) and ran on uncapped text. Every quantifier is bounded and every whitespace run is followed by a required token; a second quadratic delimiter (`\s*["']?\s*`, 16k spaces: 1 s, 64k: hang) was found in review the same day and fixed too, with adversarial whitespace/quote cases in the tests. 400k chars redact in well under a second. v2.4.0 remains affected until a hotfix is published.
 - `restore` of an older-schema backup left the store without durable tables.
