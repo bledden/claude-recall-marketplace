@@ -711,6 +711,17 @@ MIT License - see LICENSE file for details.
 
 `/recall index /explicit/path --agent claude` (or `codex`) imports a file or JSONL directory. Imports are resumable and idempotent, and never sweep personal history directories implicitly. Normal Claude hooks capture durable blocks too. Existing indexed sessions backfill as their hooks run, or through an explicit import. Missing original files leave retained text readable; old truncated rows cannot restore text that is no longer available in a transcript.
 
+Directory discovery is agent-aware in both `recall_memory.py index` and
+`recall_capture.py`: a Claude project directory contributes only top-level main
+transcripts by default; `--recursive` includes selected nested directories and
+keeps subagent sources separate from their parents. Codex date directories remain
+recursive by default. Directory scans inspect the first 30 records for the chosen
+agent's transcript shape and skip unrecognized JSONL sidecars; an explicit file
+can be used for a valid transcript with an unusually long metadata preamble.
+If another existing file claims a registered source, `path_conflict` leaves the
+registered path, cursor and evidence unchanged. Inspect the two paths rather than
+repeatedly treating that refusal as capture progress.
+
 Repository identity uses a normalized Git remote when available, then the common Git directory, then the directory path. This groups worktrees and SSH/HTTPS checkouts of the same remote. Agent/session identities stay separate. Codex support currently imports `response_item` messages/tool calls and the older top-level `message` format; mirrored events, internal instructions and reasoning are excluded. Continuous Codex capture is not installed automatically.
 
 For a desktop task opened in a parent folder, pass the actual working repository to `recall_memory.py search QUERY --cwd /path/to/repo` (or `brief --cwd`). Inspect the returned source coverage before relying on hits. A task title does not set scope, and a Documents-scoped MCP server keeps its launch-time scope. The Codex skill now explains this distinction; a missing source requires an explicitly selected import or refresh, not a global search workaround.

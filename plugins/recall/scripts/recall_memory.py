@@ -89,6 +89,7 @@ def parser():
     q.add_argument('--session',default='')
     q.add_argument('--seconds',type=float,default=10)
     q.add_argument('--rebuild',action='store_true',help='Replace retained blocks for the selected existing source')
+    q.add_argument('--recursive',action='store_true',help='Include Claude subdirectories (subagent transcripts get distinct keys); Codex date directories are always searched')
     q=sub.add_parser('prune')
     q.add_argument('source',help='Exact agent:session identifier from sources')
     q=sub.add_parser('export')
@@ -141,7 +142,14 @@ def run(args, conn):
             raise ValueError('--seconds must be positive')
         root=args.path.expanduser()
         # Newest files first, so a time-budgeted sweep indexes the sessions most likely to matter.
-        files=sorted(root.rglob('*.jsonl'), key=lambda f: f.stat().st_mtime, reverse=True) if root.is_dir() else [root]
+        # A project directory holds main transcripts at its top level; per-session
+        # subdirectories carry subagent transcripts (parent sessionId inside) and
+        # workflow journals. Those are opted into with --recursive (P72).
+        if root.is_dir():
+            files=sorted(memory.transcript_paths(root, args.agent, args.recursive), key=lambda f: f.stat().st_mtime, reverse=True)
+            files=[f for f in files if memory.looks_like_transcript(f, agent=args.agent)]
+        else:
+            files=[root]
         if args.session and len(files)>1:
             raise ValueError('--session requires one file')
         deadline=time.monotonic()+args.seconds
@@ -165,7 +173,8 @@ def run(args, conn):
             if time.monotonic()>=deadline:
                 break
         return {'files_discovered':len(files),'files_processed':len(results),'results':results,
-                'budget_exhausted':time.monotonic()>=deadline,'resume':'Repeat the same index command without --rebuild.'}
+                'budget_exhausted':time.monotonic()>=deadline,'resume':'Repeat the same index command without --rebuild.',
+                'conflicts':[r['offered_path'] for r in results if r.get('state')=='path_conflict']}
     if cmd=='get':
         return memory.get_block(conn,args.block_id,args.start,min(args.max_chars,40000),min(args.neighbors,10))
     if cmd in ('search','brief'):

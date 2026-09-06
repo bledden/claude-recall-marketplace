@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - Unreleased
 
 ### Added
+- P72 integration follow-up: share agent-aware directory discovery with independent capture, preserve Codex date-tree imports, and pass the chosen adapter to transcript detection. Four further regressions cover both Codex layouts and default/recursive Claude capture.
 - Machine-specific app reader preparer: Desktop chat MCP snippet and local Cowork plugin ZIP, explicit repository scope, absolute Python runtime and no bundled history or capture hooks. Generated launches and actual Desktop Chat/Mac-connected Cowork fixture retrieval are tested; capture and standalone cloud access remain separate. Desktop and plugin connector names are distinct for traceability. Corrected the former unqualified Cowork support and ZIP-only installation claims.
 - Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
 - Claude records flagged `isMeta` (the rendered body of a skill or slash command) are excluded by policy instead of being retained as the user's words; a compaction summary (`isCompactSummary`) is retained under role `host`, searchable but never quoted by `brief` or compaction recovery as the opening ask or recent context (found on a real compaction receipt, P65).
 - MCP tool errors distinguish the 2-second query budget and a busy store from a store that needs maintenance (P64).
 - Codex skill resolves the actual target repository with explicit `--cwd` and checks source coverage when the desktop task starts in a parent directory (P63).
 - Existing block role metadata is corrected during explicit rebuild, including unchanged Claude host summaries; prior durable metadata needs rebuild to be removed. Legacy exchanges retain their prior host-prompt behavior.
+- `index DIR` sweeps only the main transcripts at the top of a project directory; `--recursive` opts into per-session subdirectories, where subagent transcripts (which carry the parent's sessionId) get their own source key and workflow journals are skipped. A file that claims an already-registered source's identity is refused (`path_conflict`) instead of being read against that source's cursor (P72).
 - Independent foreground capture/refresh of explicitly selected Claude/Codex histories, with fair incremental progress, new-file/append detection and no automatic background-service installation.
 - Complete redacted source blocks with stable references, chunked lexical search, exact paginated retrieval and neighboring-block references. Legacy capped exchanges remain compatible.
 - Explicit, resumable Claude/Codex transcript imports with normalized repository identity across worktrees and remote URL protocols.

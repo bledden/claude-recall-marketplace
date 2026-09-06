@@ -17,22 +17,22 @@ import memory_store as memory
 
 
 class CaptureWorker:
-    def __init__(self, conn, roots, agent):
+    def __init__(self, conn, roots, agent, recursive=False):
         self.conn, self.roots, self.agent = conn, [Path(p).expanduser().resolve() for p in roots], agent
+        self.recursive = recursive
         self.pending = deque()
         self.signatures = {}
 
     def discover(self):
-        files, errors = set(), []
+        files, explicit_files, errors = set(), set(), []
         for root in self.roots:
             try:
                 if root.is_file():
                     files.add(root)
+                    explicit_files.add(root)
                 elif root.is_dir():
                     # Do not follow symlink files out of an explicitly selected source root.
-                    for path in root.rglob('*.jsonl'):
-                        if path.is_file() and not path.is_symlink():
-                            files.add(path)
+                    files.update(memory.transcript_paths(root, self.agent, self.recursive))
                 else:
                     errors.append({'path': str(root), 'state': 'source_missing'})
             except OSError:
@@ -43,6 +43,11 @@ class CaptureWorker:
                 st = path.stat()
                 signature = (st.st_mtime_ns, st.st_size)
                 if self.signatures.get(path) != signature:
+                    if path not in explicit_files and not memory.looks_like_transcript(path, agent=self.agent):
+                        # Reconsider a skipped sidecar only if it changes, so a
+                        # partial writer can later become a recognizable source.
+                        self.signatures[path] = signature
+                        continue
                     changed.append((path, signature))
             except OSError:
                 errors.append({'path': str(path), 'state': 'source_missing'})
@@ -94,13 +99,14 @@ def main():
     p.add_argument('--path', type=Path, action='append', required=True, help='Authorized JSONL file or source directory; repeat for additional roots')
     p.add_argument('--seconds', type=positive, default=4, help='Soft budget per cycle; default 4 seconds')
     p.add_argument('--watch', action='store_true', help='Continue in the foreground until interrupted')
+    p.add_argument('--recursive', action='store_true', help='Include Claude subdirectories; Codex date directories are always searched')
     p.add_argument('--interval', type=positive, default=10, help='Seconds between cycles in watch mode; default 10')
     args = p.parse_args()
     for root in args.path:
         if not root.expanduser().exists():
             p.error('Source path does not exist: ' + str(root))
     conn = get_connection(args.db.expanduser())
-    worker = CaptureWorker(conn, args.path, args.agent)
+    worker = CaptureWorker(conn, args.path, args.agent, recursive=args.recursive)
     try:
         while True:
             result = worker.refresh(args.seconds)

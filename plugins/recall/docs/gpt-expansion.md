@@ -13,6 +13,17 @@ python3 /path/to/recall/scripts/recall_capture.py --db /path/to/recall.db --agen
 
 Each command reports progress. Repeat while `pending_files` is nonzero. Imports populate the durable evidence store; they do not synthesize legacy exchanges, highlights or session links. For continuous refresh, add `--watch`; the process runs in the foreground and stops with Ctrl-C. It checks every 10 seconds by default (`--interval` changes that), gives sources fair turns within a soft four-second cycle budget (`--seconds`), and detects new files and appended records. Discovery and a single large record can exceed that budget. Source edits that require `index --rebuild` are reported and never rebuilt automatically. Stop a watcher before pruning if you want to prevent later source updates from being reimported.
 
+Directory discovery is agent-aware in both `recall_memory.py index` and
+`recall_capture.py`: a Claude project directory contributes only top-level main
+transcripts by default; `--recursive` includes selected nested directories and
+keeps subagent sources separate from their parents. Codex date directories remain
+recursive by default. Directory scans inspect the first 30 records for the chosen
+agent's transcript shape and skip unrecognized JSONL sidecars; an explicit file
+can be used for a valid transcript with an unusually long metadata preamble.
+If another existing file claims a registered source, `path_conflict` leaves the
+registered path, cursor and evidence unchanged. Inspect the two paths rather than
+repeatedly treating that refusal as capture progress.
+
 Launch the MCP server with one explicit repository scope:
 
 ```sh

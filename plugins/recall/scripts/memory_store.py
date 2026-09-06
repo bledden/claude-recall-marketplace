@@ -368,6 +368,42 @@ def _store_block(conn, source_key, key, seq, role, kind, timestamp, text, ordina
     return 1
 
 
+def transcript_paths(root, agent='claude', recursive=False):
+    """Candidates within an explicit directory, respecting each agent's layout.
+
+    Claude project folders have main transcripts at their top level. Codex's
+    normal sessions root uses year/month/day directories, which are not subagents.
+    """
+    root = Path(root)
+    paths = root.rglob('*.jsonl') if recursive or agent == 'codex' else root.glob('*.jsonl')
+    return (path for path in paths if path.is_file() and not path.is_symlink())
+
+
+def looks_like_transcript(path, agent='claude', probe=30):
+    """True when one of the first records is a conversation message. Workflow
+    journals and other JSONL sidecars under a project directory are not sources."""
+    try:
+        with open(path, 'rb') as file:
+            for _ in range(probe):
+                raw = file.readline()
+                if not raw:
+                    break
+                try:
+                    item = json.loads(raw)
+                except (ValueError, UnicodeDecodeError):
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                if agent == 'codex':
+                    if item.get('type') in ('session_meta', 'response_item', 'message'):
+                        return True
+                elif isinstance(item.get('message'), dict) or item.get('type') in ('user', 'assistant'):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
 def trace_metadata(path, agent, session_id='', cwd=''):
     """Read metadata from the file, without collecting its message content."""
     if session_id and cwd:
@@ -424,7 +460,18 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
     path = str(Path(path).expanduser().resolve())
     session_id, cwd = trace_metadata(path, agent, session_id, cwd)
     source_key = agent + ':' + session_id
+    if agent == 'claude' and Path(path).parent.name == 'subagents':
+        # A subagent transcript carries its PARENT's sessionId. Key it as its own
+        # source so it never masquerades as the parent (P72).
+        source_key += '/' + Path(path).stem
     previous = conn.execute('SELECT * FROM memory_sources WHERE source_key=?', (source_key,)).fetchone()
+    if previous and previous['path'] != path and os.path.exists(previous['path']):
+        # Same identity, different file, and the registered file still exists: this
+        # is another file claiming the source (a sidecar, a copy, a journal). Refuse
+        # rather than reinterpret the registered source's cursor against a different
+        # file, which marked live sources source_changed during a directory import (P72).
+        return {'source': source_key, 'blocks': 0, 'offset': previous['byte_offset'], 'state': 'path_conflict',
+                'registered_path': previous['path'], 'offered_path': path}
     if previous and previous['scope_pinned']:
         # R07: an explicit `rescope` wins over the cwd recorded in the transcript.
         cwd, repo = previous['project_path'], previous['repo_id']
