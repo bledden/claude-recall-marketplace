@@ -475,3 +475,33 @@ Receipts: `/Users/bledden/Documents/recall-review-2026-09-05/final-integration/`
 
 
 **P63 natural model verification:** after installing the updated skill, fresh ephemeral Codex task `01a077bb-842d-7f73-a4b4-69e7c7cc1b67` first selected the correct `--cwd` but the test's read-only shell prevented the CLI's normal SQLite bookkeeping; it recovered via a static read-only workaround. That trial is preserved, not reported as a clean CLI pass. A repeat with only the synthetic fixture directory writable again chose Recall without the prompt naming it, read the skill, passed the actual target path to search, checked the returned source, got the original block, and cited the correct gate procedure. Both ordinary CLI calls exited 0; no expected answer was in the prompt. This closes the scoped-use fixture criterion. Exact successful task ID, commands, prompt and answer are in `final-integration/codex-scope-model-check.json`; no triton production task/history was modified.
+
+
+### 2026-09-06 (Astra): Claude Mac chat and Cowork expansion
+
+The maintainer explicitly requested any necessary changes for Claude Mac chat and
+Cowork. This adds P67–P70 to the active total plan; it does not replace P10, P22 or
+the publication hold. While other sessions finish, the maintainer is waiting to
+quit/restart the app. No session was interrupted and no app was restarted.
+
+| ID | Status | Work and completion criterion |
+|---|---|---|
+| P67 | Implemented; generated launches tested, actual app validation pending under P68 | Add a scoped app reader preparer: explicit existing DB/repository, absolute Python 3.9+/FTS5 preflight, Desktop chat config snippet and local Cowork plugin ZIP with root manifest/MCP configuration and retrieval-only skill. No history, credentials or Code capture hooks bundled. Preserve the Code path and route available Recall MCP tools before shell commands. Correct unsupported Cowork equivalence and ZIP-only public claims. |
+| P68 | Open, waiting for maintainer's convenient app restart | Verify real Desktop Chat and local Cowork independently: tool discovery, natural selection, search/get/citations from Claude and Codex, negative scope check, same-session visibility of newly captured fixture evidence. The Desktop `recall-validation` config is staged for the synthetic cross-agent store only, with original config backed up and unrelated settings preserved. Cowork ZIP is prepared but not installed; local plugin MCP is separate from Desktop config. User action is needed for restart and any app permission prompt. Only then prepare/activate a deliberately selected real project scope. |
+| P69 | Two real local Cowork prefixes imported and exact first pages verified; automatic capture and Desktop chat ingestion remain open | Existing local Cowork uses Claude-shaped project JSONL in the app support directory: two selected prefixes, 7,535 and 27,690 bytes, index to EOF with no malformed/unsupported records, seven total retained blocks and seven exact retrieval checks. Scratch store only; originals and live store untouched. Verify source identity, host-vs-VM project mapping and new-task capture before claiming ongoing Cowork support. Desktop chat has no implemented export adapter/capture path; establish an explicit supported source format before implementing or declaring that capability. Do not scan unrelated account/browser databases. |
+| P70 | Open, conditional on actual Cowork execution mode | Current official docs distinguish cloud-default and existing local Cowork. Local plugin MCP runs on the device; cloud tasks cannot launch the host-local stdio reader. Determine the maintainer's mode. For cloud mode, implement/test a user-selected scoped evidence export workflow or obtain a separately approved authenticated connector design if continuous retrieval is required. No public tunnel, whole-store upload, or automatic account-history access is enabled. A documented limitation alone does not close requested cloud functionality. |
+
+**Validation:** 687 runtime tests pass in 11.44 seconds, including seven new app
+package cases. Both generated launches run in an unrelated working directory with
+a minimal PATH and a deliberately wrong RECALL_DB, using explicit arguments;
+search/get/brief/status succeed across two agents, another repository's known
+block is rejected, and source DB bytes stay unchanged. The ZIP reader is tested
+from a separate extracted installation with spaces and ?/# path characters.
+Neither protocol emulation nor manifest validation is reported as live app proof.
+
+**Research:** docs/claude-app.md links current official plugin, Desktop config,
+Cowork architecture and connector-routing documentation. The generic Code plugin
+cannot promise access to the host DB from a Cowork VM. App readers are intentionally
+retrieval-only; preparing the package does not capture the current conversation.
+Receipts and the private synthetic validation package are under
+`/Users/bledden/Documents/recall-review-2026-09-05/claude-app/`.

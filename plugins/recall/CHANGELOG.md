@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - Unreleased
 
 ### Added
+- Machine-specific app reader preparer: Desktop chat MCP snippet and local Cowork plugin ZIP, explicit repository scope, absolute Python runtime and no bundled history or capture hooks. Generated launches are tested; live app validation remains pending. Corrected the former unqualified Cowork support and ZIP-only installation claims.
 - Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
 - Claude records flagged `isMeta` (the rendered body of a skill or slash command) are excluded by policy instead of being retained as the user's words; a compaction summary (`isCompactSummary`) is retained under role `host`, searchable but never quoted by `brief` or compaction recovery as the opening ask or recent context (found on a real compaction receipt, P65).
 - MCP tool errors distinguish the 2-second query budget and a busy store from a store that needs maintenance (P64).

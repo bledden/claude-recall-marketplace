@@ -50,6 +50,9 @@ The four tools are `recall_search`, `recall_get`, `recall_brief` and `recall_sta
 
 ## What is verified
 
+Claude Desktop chat and Cowork are tracked separately in [Claude app setup](claude-app.md).
+The prepared app package is not evidence that an actual app session has loaded it.
+
 | Client or source | Retrieval | Capture | Evidence still needed |
 |---|---|---|---|
 | Claude Code | Fresh authenticated skill and MCP search/get/citations verified; real compact context delivery observed | Existing hooks; optional explicit refresh/watch | Working session still needs refreshed skill text when convenient |

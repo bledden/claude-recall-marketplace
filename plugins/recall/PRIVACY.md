@@ -99,6 +99,14 @@ Optional semantic indexing stores local embedding vectors plus the supplied mode
 
 ## Optional local MCP access
 
+The optional `prepare_claude_app.py` command generates a private, machine-specific
+Desktop chat configuration and local Cowork reader plugin. It bundles reader code
+and absolute paths, not conversation history or credentials. Nothing is uploaded
+or installed by preparation. The configured reader can return indexed evidence to
+Claude; this does not capture new chat/Cowork conversations. Cloud Cowork cannot
+run this host-local server. Do not distribute the generated private package as a
+public release artifact. See `docs/claude-app.md` for the separate surface limits.
+
 `recall_mcp.py` exposes four retrieval tools over stdio. The client chooses an explicit repository scope at launch, which applies to search, get-by-ID, brief, sources and derived counts. The server opens the existing store read-only and neither creates/migrates it nor captures transcripts, logs Recall invocations, repairs data or executes recalled commands. SQLite may use its normal WAL coordination sidecars. Capture remains a separate explicit process.
 
 This interface opens no network listener. Evidence returned to an MCP client may be sent to that client’s model provider, just like evidence retrieved by the skill/CLI. It does not make the calling host local-only. Uninstall the separately configured MCP entry and stop the foreground watcher to disable those integrations; the retained store and original transcripts are separate data to delete.

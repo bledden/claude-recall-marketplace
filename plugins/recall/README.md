@@ -27,7 +27,7 @@ If you only need to re-anchor within the current session, native `/recap` / `/re
 
 ## Requirements
 
-- **Claude Code** 2.1.x or later (uses the `Stop` hook and the `SessionStart` `compact` matcher; see the 2.1.x note below), or **Claude Cowork** (macOS desktop app)
+- **Claude Code** 2.1.x or later for the capture hooks and CLI skill. Claude Desktop chat and local Cowork use a separately configured reader; see [app setup and validation limits](docs/claude-app.md).
 - **Python 3.9+** (for hook and script execution; the durable store uses `str.removesuffix`, so 3.6–3.8 fail)
 
 ---
@@ -42,21 +42,15 @@ Custom plugins now **require a marketplace structure** to work reliably with the
 
 ## Installation
 
-### Claude Cowork (macOS Desktop App)
+### Claude Desktop chat and Cowork
 
-**From GitHub:**
-1. Open the Claude Desktop app
-2. Navigate to the **Cowork** tab
-3. Click **"Plugins"** in the left sidebar
-4. Click **"Add from GitHub"**
-5. Enter: `https://github.com/bledden/claude-recall-plugin`
-
-**From zip file:**
-1. **[Download claude-recall-plugin.zip](https://github.com/bledden/claude-recall-plugin/releases/latest/download/claude-recall-plugin.zip)**
-2. In the Cowork **Plugins** sidebar, click **"Upload plugin"**
-3. Select the downloaded `claude-recall-plugin.zip` file
-
-The plugin will appear in your Cowork plugins list. Invoke with `/recall` during a Cowork session.
+Use the [Claude app setup guide](docs/claude-app.md) to prepare a repository-scoped
+reader. Desktop chat uses its local MCP configuration; local Cowork uses a
+plugin-bundled MCP server. The app preparer supplies both configurations with an
+MCP retrieval skill. It does not install them or capture new app conversations.
+Generated launches are tested; live app discovery/model checks remain open.
+Cloud Cowork cannot run the host-local reader. Installing the Code plugin alone
+does not configure shared memory for these surfaces.
 
 ### Claude Code: Option 1 - Pre-Built Marketplace (Recommended for VSCode)
 
@@ -658,7 +652,7 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 
 ## Known Limitations
 
-- **Claude Cowork requires zip upload** — Cowork does not yet support marketplace installation; upload the plugin zip file manually via the Plugins sidebar
+- **Claude app surfaces need separate setup** — Desktop chat, local Cowork and cloud Cowork have different connection paths. App retrieval and capture are separate; see [current support and remaining checks](docs/claude-app.md).
 - **VSCode extension requires marketplace** — Due to a [breaking change in 2.1.x](https://github.com/anthropics/claude-code/issues/17089), the VSCode extension requires the marketplace installation method
 - **Experimental semantic search** — Default retrieval uses SQLite FTS5 (BM25 × 30-day recency). Optional local embeddings require a separate dependency and explicit build; the current small evaluation does not justify enabling them by default
 - **Attachment references are not attachment bodies** — a Codex rollout that only names an attachment path cannot supply its contents to Recall. Pasted reports keep the role recorded in the transcript.
