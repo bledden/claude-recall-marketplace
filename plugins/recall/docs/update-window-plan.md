@@ -703,3 +703,14 @@ The Desktop config contains both readers with optional local diagnostics, but a
 process restart/fresh Chat real-project acceptance remains pending while other
 Code task activity is observed. No working task was interrupted. Full handoff and
 measurements: `~/Documents/recall-review-2026-09-05/everyday-activation/REVIEW-AND-HANDOFF.md`.
+
+**P68 activation completion, September 6:** after the Code indicator became idle
+and the Cowork validation finished, Astra quit and relaunched Claude. Fresh
+Desktop Chat `4d5a44b7-1e6a-45f7-8104-6e90f2a059f6` used both configured readers
+with per-call approval and recovered both real decisions with supported cited
+ranges. It answered from search passages; no separate get call is claimed for
+that Chat run. The three cited windows were independently checked. Both everyday
+Chat and Mac-connected Cowork readers are now functionally active. P71's Cowork
+quotation/provenance caveat, P10 human evaluation, P22 older terminal text refresh,
+P69 app capture limits and all held publication steps remain as recorded. The
+final receipt supersedes the earlier restart-pending note above.
