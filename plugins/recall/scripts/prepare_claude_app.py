@@ -27,7 +27,10 @@ description: Recover previous decisions, commands and discussions from the conne
 
 # Recall from connected project memory
 
-Use the available Recall MCP tools (their names may have a host/server prefix).
+Use the Recall reader named {{PLUGIN_READER}} when it is available (tool names
+may have a host/server or remote-devices prefix). This identifies the connector
+bundled with this skill, independently of any Desktop chat configuration.
+If it is absent, report that and identify any alternative Recall reader used.
 Check recall_status for repository identity, indexed sources and freshness.
 Search with recall_search; use kind="tool_use" for commands and file edits.
 Read original passages with recall_get and follow next_start to finish long text.
@@ -44,8 +47,10 @@ Never claim today's conversation has been saved by successfully searching histor
 If the tools are absent, explain that Recall is disconnected in this surface.
 Do not run host Python paths in chat's sandbox or Cowork's Linux VM, create an
 empty replacement database, or assume a Desktop chat connector works in Cowork.
-Local Cowork needs the plugin's local MCP component enabled; cloud Cowork cannot
-run this host-local server. Ask for the intended accessible connection or a
+The local MCP component must be enabled and its Mac must be online. A Cowork
+task may reach it through the app's remote-devices bridge; do not assume that
+cloud execution means a connected host reader is unavailable. If no such tools
+are exposed, ask for the intended accessible connection or a
 user-selected evidence export rather than uploading the whole store.
 '''
 
@@ -70,7 +75,8 @@ def prepare(output, db_path, repo_id, python, name='recall-reader'):
         raise ValueError('No indexed sources in this repository; select/capture the intended scope first')
     # Read and validate everything before creating a new output directory.
     payload = {'scripts/'+n: (ROOT/'scripts'/n).read_bytes() for n in READER_FILES}
-    payload['skills/recall/SKILL.md'] = APP_SKILL.encode()
+    plugin_reader = name + '-plugin'
+    payload['skills/recall/SKILL.md'] = APP_SKILL.replace('{{PLUGIN_READER}}', plugin_reader).encode()
     payload['LICENSE'] = (ROOT/'LICENSE').read_bytes()
     version = json.loads((ROOT/'.claude-plugin/plugin.json').read_text())['version']
     manifest = {'name': name, 'version': version,
@@ -78,7 +84,7 @@ def prepare(output, db_path, repo_id, python, name='recall-reader'):
     payload['.claude-plugin/plugin.json'] = (json.dumps(manifest, indent=2)+'\n').encode()
     server = {'command': str(python), 'args': ['-S', '${CLAUDE_PLUGIN_ROOT}/scripts/recall_mcp.py',
               '--db', str(db_path), '--repo-id', repo_id]}
-    payload['.mcp.json'] = (json.dumps({'mcpServers': {name: server}}, indent=2)+'\n').encode()
+    payload['.mcp.json'] = (json.dumps({'mcpServers': {plugin_reader: server}}, indent=2)+'\n').encode()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     plugin = output/name
     for relative, data in payload.items():
@@ -106,7 +112,7 @@ def prepare(output, db_path, repo_id, python, name='recall-reader'):
         'Keep this directory in place. Quit/restart only when your running sessions have finished.\n\n'
         'Local Cowork: upload '+archive.name+' in Customize > Plugins and enable its MCP component. '
         'This is separate from Desktop chat config. Host-local MCP must be permitted. '
-        'Cloud Cowork cannot launch it. Successful plugin installation alone is not a functional test.\n\n'
+        'Cowork may reach the host reader through a connected Mac; standalone cloud access is unverified. Successful plugin installation alone is not a functional test.\n\n'
         'In each surface, check status, search a known decision, get the original passage and its citation. '
         'Verify an unrelated repository cannot be read. Capture of new app conversations is not implemented.\n')
     return receipt

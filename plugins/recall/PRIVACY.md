@@ -103,8 +103,9 @@ The optional `prepare_claude_app.py` command generates a private, machine-specif
 Desktop chat configuration and local Cowork reader plugin. It bundles reader code
 and absolute paths, not conversation history or credentials. Nothing is uploaded
 or installed by preparation. The configured reader can return indexed evidence to
-Claude; this does not capture new chat/Cowork conversations. Cloud Cowork cannot
-run this host-local server. Do not distribute the generated private package as a
+Claude; this does not capture new chat/Cowork conversations. Cowork may reach the
+host-local server through the app’s remote-devices bridge while the Mac is online.
+This does not install a server inside a cloud sandbox or expose a public endpoint. Do not distribute the generated private package as a
 public release artifact. See `docs/claude-app.md` for the separate surface limits.
 
 `recall_mcp.py` exposes four retrieval tools over stdio. The client chooses an explicit repository scope at launch, which applies to search, get-by-ID, brief, sources and derived counts. The server opens the existing store read-only and neither creates/migrates it nor captures transcripts, logs Recall invocations, repairs data or executes recalled commands. SQLite may use its normal WAL coordination sidecars. Capture remains a separate explicit process.

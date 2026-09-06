@@ -48,8 +48,9 @@ Use the [Claude app setup guide](docs/claude-app.md) to prepare a repository-sco
 reader. Desktop chat uses its local MCP configuration; local Cowork uses a
 plugin-bundled MCP server. The app preparer supplies both configurations with an
 MCP retrieval skill. It does not install them or capture new app conversations.
-Generated launches are tested; live app discovery/model checks remain open.
-Cloud Cowork cannot run the host-local reader. Installing the Code plugin alone
+Desktop Chat and Mac-connected Cowork retrieval, freshness and scope isolation
+were exercised on a synthetic fixture in app 1.46388.4. Standalone cloud access
+without a connected Mac reader remains unverified. Installing the Code plugin alone
 does not configure shared memory for these surfaces.
 
 ### Claude Code: Option 1 - Pre-Built Marketplace (Recommended for VSCode)

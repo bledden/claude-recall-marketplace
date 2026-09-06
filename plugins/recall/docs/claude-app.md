@@ -3,25 +3,37 @@
 Claude Code, Desktop chat and Cowork have different execution and connection
 mechanisms. Installing the Code plugin does not configure all three. The 2.5
 candidate includes a scoped app reader preparation command. Generated launch
-configurations pass subprocess tests; actual Mac app discovery and model use
-remain an explicit validation gate.
+configurations pass subprocess tests. Actual Desktop Chat and Mac-connected
+Cowork discovery, cross-agent retrieval, same-session freshness and repository
+isolation were exercised on the synthetic fixture in app 1.46388.4. These checks
+do not certify automatic capture or human answer quality.
 
 | Surface | Retrieval route | Capture of new conversations |
 |---|---|---|
 | Claude Code, including Code sessions launched by the app | Existing Recall plugin hooks/skill or scoped MCP | Hooks verified in Code; a particular app-launched session must actually load the plugin |
 | Desktop **Chat** | Local stdio MCP entry in Desktop configuration | Not implemented; reading indexed Code/Codex/Cowork history does not capture the current chat |
-| **Local Cowork** | Plugin-bundled local MCP server, subject to app policy | Two local Cowork transcript prefixes imported successfully through the Claude adapter into a scratch store; no automatic watcher or Cowork hook delivery verified |
-| **Cloud Cowork** | This host-local stdio reader cannot run there | Not implemented; no implicit account-history access or host-store upload |
+| **Cowork with a connected Mac** | Observed `remote-devices` bridge to the local MCP reader; plugin carries the recall skill and a separate local connector | Two local Cowork transcript prefixes imported successfully through the Claude adapter into a scratch store; no automatic watcher or Cowork hook delivery verified |
+| **Standalone cloud Cowork, without a connected Mac reader** | Not provided by this host-local stdio package | Not implemented; no implicit account-history access or host-store upload |
 
 Anthropic documents that plugins carry skills across chat and Cowork, while hooks
 are unavailable in chat. [Plugin support](https://support.claude.com/en/articles/13837440-use-plugins-in-claude).
-Desktop chat's local MCP configuration is separate and is not available in Cowork.
-[Connector routing](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
-Local Cowork's agent loop can run plugin MCP servers on the device; shell execution
-runs inside a Linux VM. Cloud Cowork runs in a separate sandbox and cannot run
-these local servers. [Cowork architecture](https://support.claude.com/en/articles/14479288-claude-cowork-architecture-overview).
-Sources checked September 6, 2026; verify the session's execution mode rather than
-inferring it from use of the Mac app.
+Anthropic's connector guide says Desktop local configuration is separate from
+Cowork's remote connector mechanism. [Connector routing](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+**Observed behavior in app 1.46388.4:** a Cowork task with the “Claude Desktop
+(macOS)” device badge used `mcp__remote-devices__recall-validation__...` tools and
+successfully read the host store. Thus a categorical “Cowork cannot reach the
+Desktop reader” claim is not justified for this version. The device bridge is
+observed; the precise location of the model/agent loop was not independently
+established from that badge or the task URL.
+
+The local process still runs on the Mac. Cowork shell execution and cloud
+sandboxes are separate environments; do not run a macOS Python path inside them.
+The Mac must remain connected for its local reader to be useful. Access from a
+standalone cloud task with no connected reader is not implemented or verified.
+[Cowork architecture](https://support.claude.com/en/articles/14479288-claude-cowork-architecture-overview).
+Sources checked September 6, 2026. Actual tool discovery takes precedence over
+assuming capability from a surface name; retain the distinction between running
+a local server and reaching it through a device bridge.
 
 ## Prepare a reader for one indexed repository
 
@@ -46,6 +58,8 @@ into the launch arguments, copies the four stdlib reader modules, and emits:
 - an unpacked `recall-reader/` used by the Desktop configuration;
 - a `BUILD.json` with file hashes, selected repository and configuration details.
 
+Desktop and plugin connectors have distinct names (`recall-reader` and
+`recall-reader-plugin` by default), so tool traces can identify the route.
 The output directory must be new. No history, credentials, hook scripts or capture
 commands are bundled. This is a **machine-specific private configuration**, not
 the public release ZIP: it contains local database/interpreter paths. Preparing it
@@ -67,12 +81,13 @@ The MCP tool descriptions support natural discovery without requiring a skill
 installation. If a Recall skill is present, it chooses the MCP interface first.
 Do not execute host paths in chat's code sandbox.
 
-## Local Cowork setup
+## Cowork setup with a connected Mac
 
 Open Customize > Plugins and upload the generated `recall-reader.zip`. Enable its
-MCP component and skill. This local plugin route is separate from the chat
-configuration. If local MCP is disabled by policy or the task is cloud-based, this
-package cannot provide a connection; report that explicitly. Do not substitute
+MCP component and skill. This local plugin route is separately configured from the
+chat entry. Use the plugin-named reader when available and record the actual
+connection used. If local MCP is disabled or no device reader is exposed, report
+that explicitly rather than creating an empty sandbox store. Do not substitute
 `localhost` as a remote connector URL or expose the database via a public tunnel.
 
 Cowork also accepts marketplace repositories; the old README's “ZIP only” claim

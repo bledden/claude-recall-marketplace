@@ -51,7 +51,7 @@ The four tools are `recall_search`, `recall_get`, `recall_brief` and `recall_sta
 ## What is verified
 
 Claude Desktop chat and Cowork are tracked separately in [Claude app setup](claude-app.md).
-The prepared app package is not evidence that an actual app session has loaded it.
+Actual app 1.46388.4 Chat and Mac-connected Cowork fixture receipts now cover natural discovery, cross-agent retrieval, freshness and scope refusal; these are separate from automatic app capture and human quality evaluation.
 
 | Client or source | Retrieval | Capture | Evidence still needed |
 |---|---|---|---|

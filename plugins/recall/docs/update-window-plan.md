@@ -486,10 +486,10 @@ quit/restart the app. No session was interrupted and no app was restarted.
 
 | ID | Status | Work and completion criterion |
 |---|---|---|
-| P67 | Implemented; generated launches tested, actual app validation pending under P68 | Add a scoped app reader preparer: explicit existing DB/repository, absolute Python 3.9+/FTS5 preflight, Desktop chat config snippet and local Cowork plugin ZIP with root manifest/MCP configuration and retrieval-only skill. No history, credentials or Code capture hooks bundled. Preserve the Code path and route available Recall MCP tools before shell commands. Correct unsupported Cowork equivalence and ZIP-only public claims. |
-| P68 | Open, waiting for maintainer's convenient app restart | Verify real Desktop Chat and local Cowork independently: tool discovery, natural selection, search/get/citations from Claude and Codex, negative scope check, same-session visibility of newly captured fixture evidence. The Desktop `recall-validation` config is staged for the synthetic cross-agent store only, with original config backed up and unrelated settings preserved. Cowork ZIP is prepared but not installed; local plugin MCP is separate from Desktop config. User action is needed for restart and any app permission prompt. Only then prepare/activate a deliberately selected real project scope. |
+| P67 | Implemented and app-tested; distinct plugin/Desktop connector names added after route ambiguity was observed | Add a scoped app reader preparer: explicit existing DB/repository, absolute Python 3.9+/FTS5 preflight, Desktop chat config snippet and local Cowork plugin ZIP with root manifest/MCP configuration and retrieval-only skill. No history, credentials or Code capture hooks bundled. Preserve the Code path and route available Recall MCP tools before shell commands. Correct unsupported Cowork equivalence and ZIP-only public claims. |
+| P68 | Fixture gates pass in actual Desktop Chat and Mac-connected Cowork; everyday activation awaits scope choice | Actual fresh contexts verified natural skill/tool discovery, both Claude/Codex citations, same-session new evidence and foreign-ID refusal. The app is running with the synthetic-only Desktop entry and approved test plugin; distinct connector names prove the plugin route. Receipts below and in claude-app/live-check. Prepared real-project readers remain uninstalled pending the maintainer’s selected scope. |
 | P69 | Two real local Cowork prefixes imported and exact first pages verified; automatic capture and Desktop chat ingestion remain open | Existing local Cowork uses Claude-shaped project JSONL in the app support directory: two selected prefixes, 7,535 and 27,690 bytes, index to EOF with no malformed/unsupported records, seven total retained blocks and seven exact retrieval checks. Scratch store only; originals and live store untouched. Verify source identity, host-vs-VM project mapping and new-task capture before claiming ongoing Cowork support. Desktop chat has no implemented export adapter/capture path; establish an explicit supported source format before implementing or declaring that capability. Do not scan unrelated account/browser databases. |
-| P70 | Open, conditional on actual Cowork execution mode | Current official docs distinguish cloud-default and existing local Cowork. Local plugin MCP runs on the device; cloud tasks cannot launch the host-local stdio reader. Determine the maintainer's mode. For cloud mode, implement/test a user-selected scoped evidence export workflow or obtain a separately approved authenticated connector design if continuous retrieval is required. No public tunnel, whole-store upload, or automatic account-history access is enabled. A documented limitation alone does not close requested cloud functionality. |
+| P70 | Connected-Mac bridge verified; standalone access without the Mac remains an open conditional design | Actual Cowork remote-devices tools reached both the host reader and the distinct plugin reader. Do not infer inability to access host tools from the cloud/sandbox label; the process runs on the connected Mac. Without that device bridge, an explicit scoped export or separately approved authenticated connector design would be needed. No public listener, whole-store upload or automatic account-history access is enabled. |
 
 **Validation:** 687 runtime tests pass in 11.44 seconds, including seven new app
 package cases. Both generated launches run in an unrelated working directory with
@@ -505,3 +505,85 @@ cannot promise access to the host DB from a Cowork VM. App readers are intention
 retrieval-only; preparing the package does not capture the current conversation.
 Receipts and the private synthetic validation package are under
 `/Users/bledden/Documents/recall-review-2026-09-05/claude-app/`.
+
+
+### 2026-09-06 (Astra): actual Claude Desktop Chat receipt
+
+After the maintainer relaunched and authorized continuation, computer use worked.
+Claude Desktop 1.46388.4 initially still showed no local MCP servers. An explicit
+Claude Desktop quit/relaunch loaded recall-validation; the log records initialize,
+notifications/initialized and tools/list success. The terminal Claude sessions were
+not reloaded.
+
+**P68 Chat:** a fresh Sonnet 5 Medium chat received the natural test question with
+no Recall name and no expected answer. It discovered the reader, called search and
+two get operations, quoted both original Claude/Codex blocks and cited their IDs.
+Connection, discovery and retrieval pass. The first answer omitted character
+offsets and called compatible records conflicting; one explanatory sentence also
+misstated accepted amber-sparrow as rejected, although its quotations and concluding
+facts were correct. These are retained answer-quality caveats, not a clean human
+quality score or a reason to silently alter this fixture.
+
+A second request in the same chat exercised status, brief and get after external
+capture appended a new synthetic source. It returned copper-otter-482 and the
+recorded pytest command from block ad658ffdece276c4ef0d90538f635bf4, with the verified
+0–120 character range. Status reported three scoped sources. A get for the known
+out-of-scope block 8c52de0669731e1a3c4254636c796627 returned exactly “Unknown block in
+this repository”. Freshness and isolation pass in the actual app. Only the
+synthetic fixture was appended, with a pre-change SQLite backup; the live Recall
+store was untouched. This does not establish capture of this Chat conversation.
+
+Chat: https://claude.ai/chat/855b3fc9-944b-4530-ac60-ce7428060187 . Receipts:
+`recall-review-2026-09-05/claude-app/live-check/chat-initial.json`,
+`chat-follow-up.json`, `chat-mcp.log`, `fixture-append.json`.
+Cowork installation/model use remains the other P68 gate; P69/P70, P10/P22 and the
+publication hold retain their separate criteria.
+
+
+### 2026-09-06 (Astra): Cowork bridge and distinct plugin route verified
+
+**P68:** the maintainer explicitly approved installation of the synthetic test
+plugin. Cowork task `cse_01PBS6t34tQ99TuV5FxsdaZ3` selected
+`recall-validation:recall` without the initiating question naming Recall and used
+status/search/two gets with correct source IDs and 0–101 / 0–102 character ranges.
+A same-task follow-up retrieved the externally appended marigold-ibis-613 block
+at 0–116 and received “Unknown block in this repository” for the known foreign
+block. The model correctly declined to prove from its limited view whether that
+foreign ID exists; the evaluator's fixture setup establishes that fact.
+
+**P67/P70 correction from actual behavior:** the selected tools were
+`mcp__remote-devices__recall-validation__...`. The original Desktop entry and
+plugin connector shared a name, so that receipt alone did not isolate the plugin
+route. The preparer now gives the plugin connector a `-plugin` suffix and the
+skill prefers that named reader. The test plugin was updated with identical reader
+code and identical fixture scope. Fresh Cowork task
+`cse_01XCevZg6gZg5qwcJ5F9ToUB` selected the skill and used
+`mcp__remote-devices__plugin_recall-validation_recall-validation-plugin__...`
+for status/search/get, with both correct citations. A later same-task query read
+the newly captured quartz-lark-907 block at 0–66 and refused the foreign block;
+brief was exercised too. This proves the distinct plugin route, freshness and
+boundary behavior in this app. App logs separately show both local servers
+negotiating MCP 2025-11-25 and advertising four tools.
+
+The current Cowork UI identifies its device as Claude Desktop (macOS). The exact
+location of the model/agent loop was not inferred from its `cse_` URL. Documentation
+and skill wording now distinguish a local server process from a remote-devices
+bridge reaching it; categorical claims that Cowork cannot access the host reader
+were too broad for observed app 1.46388.4. No public listener or cloud-hosted server
+was added. Standalone off-device access without this Mac is still unimplemented;
+that conditional path remains P70, not a blocker to the verified Mac workflow.
+
+**Everyday activation:** two packages are prepared locally for the already-indexed
+Recall and triton-msl repositories, one source each. Neither is installed or
+connected yet. The maintainer's pending choice selects Recall, triton-msl or two
+separate readers. Existing app entries remain synthetic-only until that choice.
+No unrequested rescope, bulk import, daemon, live-store migration or Chat capture.
+
+| ID | Status | Work and completion criterion |
+|---|---|---|
+| P71 | Observed model-answer caveats recorded; feed into human evaluation, not declared fixed by a subsequent trial | Initial Chat and Cowork answers called compatible records conflicting; Chat also had a mistaken rejection phrase and omitted offsets. A later distinct-plugin trial correctly called the records consistent and cited exact ranges. Preserve all trials, do not claim connector naming caused a quality fix, and keep P10's broader human labels/quality work separate from successful transport and retrieval. No retrieval algorithm tuning on this fixture. |
+
+Receipts: `claude-app/live-check/cowork-initial.json`, `cowork-plugin-route.json`,
+`app-reader-connection-events.log` and exact synthetic append receipts. The latest
+full test output is `claude-app/live-check/full-suite.txt`. P13 remains accepted;
+P10/P22/P69 and other recorded deferrals remain; publication is held and last.

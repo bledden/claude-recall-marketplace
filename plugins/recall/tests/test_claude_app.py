@@ -55,7 +55,7 @@ def test_both_app_launch_paths_work_outside_repo_and_preserve_store(corpus, tmp_
         assert not any(p.startswith('hooks/') or p.endswith('.db') for p in z.namelist())
         assert set(z.namelist()) == set(receipt['files'])
         z.extractall(unpack)
-    server = json.loads((unpack/'.mcp.json').read_text())['mcpServers']['recall-reader']
+    server = json.loads((unpack/'.mcp.json').read_text())['mcpServers']['recall-reader-plugin']
     server['args'] = [arg.replace('${CLAUDE_PLUGIN_ROOT}', str(unpack)) for arg in server['args']]
     launch(server, ids, tmp_path)
     assert hashlib.sha256(db.read_bytes()).hexdigest() == before

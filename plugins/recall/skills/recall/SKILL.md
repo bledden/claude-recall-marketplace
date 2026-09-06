@@ -23,9 +23,10 @@ pruning and the session menu below are Claude Code/CLI operations.
 
 In Claude Desktop chat or Cowork, do not assume the shell can see macOS paths or
 the host's Recall database. Use the connected reader; if it is absent, explain the
-missing connection. Desktop chat config is not inherited by Cowork. Local Cowork
-needs a plugin-bundled local MCP reader; cloud Cowork cannot run that host-local
-server. See `docs/claude-app.md` for setup and surface limits. Successful retrieval
+missing connection. Cowork may expose the Mac reader through `remote-devices`
+tools, including when its execution environment differs from the Mac. Inspect
+available tools rather than assuming a cloud task cannot reach a connected reader.
+A standalone cloud task without that connection has no access to this local store. See `docs/claude-app.md` for setup and surface limits. Successful retrieval
 does not mean this app conversation is being captured. Use the remaining shell
 instructions only in a Claude Code environment with the plugin scripts and store.
 
