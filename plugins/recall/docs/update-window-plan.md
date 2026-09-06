@@ -686,3 +686,20 @@ cost relative to recovery benefit, not an exclusion of embedding models. Keep th
 optional backend available and reassess cold/warm latency, peak memory, storage,
 refresh cost, token use and human-reviewed retrieval quality before changing the
 default or extending the reader contract. P10 human labels remain pending.
+
+### P68/P71: both everyday Cowork readers activated
+
+Both tested reader ZIPs from runtime c3f67aa are uploaded and enabled. A new
+Mac-connected Cowork task (`cse_01LvRcUxy2KPeadbspK4aJYC`) discovered both
+integrations, used status/search/get, recovered P38's accepted rebuild limitation
+and triton's 174 v2 hold after 211, and distinguished historical decisions from
+current state while reporting source backlogs. Six of seven cited-window anchor
+checks passed. One asserted documentation sentence was absent from its range;
+the record was a tool invocation with replacement text, so calling it shipped
+was also unsupported. This extends P71's model-answer caveat; it is not a clean
+exact-quotation pass or a human quality score. A correction follow-up is recorded
+in the receipt. Both literal Desktop launch commands pass own/foreign-scope probes.
+The Desktop config contains both readers with optional local diagnostics, but a
+process restart/fresh Chat real-project acceptance remains pending while other
+Code task activity is observed. No working task was interrupted. Full handoff and
+measurements: `~/Documents/recall-review-2026-09-05/everyday-activation/REVIEW-AND-HANDOFF.md`.
