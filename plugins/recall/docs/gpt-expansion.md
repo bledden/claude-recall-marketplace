@@ -1,24 +1,70 @@
-# GPT expansion recommendation — September 6, 2026
+# Cross-agent Recall
 
-Yes: make the retained evidence usable across agents. The immediate value is being able to continue a Claude task in Codex and retrieve the original decision, command and source passage. That workflow already works through Recall's Codex adapter and installed skill; Astra exercised discovery, search and get in a live desktop task. Automatic capture and fresh-task activation must be described separately from retrieval.
+Cross-agent recovery is now part of the active update window. Claude and Codex can contribute evidence to the same durable SQLite store, and coding clients can read it through an optional local MCP server. The existing Claude plugin and Codex skill continue to work. Capture, tool connectivity and verified model use are separate capabilities.
 
-## Proposed next increment
+## Connect a coding client
 
-Keep one SQLite store, one set of source identities, and one retrieval implementation. Add a small optional local MCP interface over `memory_store` only if testing shows the skill/CLI route is insufficient or another host needs tools. Its four operations should be `search`, `get`, `brief` and `status`. Preserve block IDs, character offsets, scope, source time and coverage notices in tool results. A model can then check evidence instead of asking another model to reconstruct a memory.
+First, explicitly import the histories you want to retain. Use absolute paths and a store you have backed up if it already contains data:
 
-Current official documentation lists local STDIO and Streamable HTTP MCP servers for Codex hosts, shared configuration across the desktop app, CLI and IDE, and remote plugin-provided MCP tools for ChatGPT web. This establishes possible integration routes; it does not establish automatic access to ChatGPT conversation history. [Official MCP documentation](https://learn.chatgpt.com/docs/extend/mcp), read September 6, 2026.
+```sh
+python3 /path/to/recall/scripts/recall_capture.py --db /path/to/recall.db --agent codex --path /path/to/codex/sessions
+python3 /path/to/recall/scripts/recall_capture.py --db /path/to/recall.db --agent claude --path /path/to/claude/project-transcripts
+```
 
-Start with a local process. Configure allowed repositories/sources outside model-supplied arguments and enforce them on every operation, especially `get` by block ID. Do not expose arbitrary SQL, filesystem paths, indexing, restore or deletion as retrieval tools. Use a genuinely read-only connection for serving: the current `get_connection()` can migrate a store, so simply wrapping the CLI is not sufficient for a read-only server. Migration/import remains an explicit local operation. Retrieved text remains untrusted historical evidence.
+Each command reports progress. Repeat while `pending_files` is nonzero. Imports populate the durable evidence store; they do not synthesize legacy exchanges, highlights or session links. For continuous refresh, add `--watch`; the process runs in the foreground and stops with Ctrl-C. It checks every 10 seconds by default (`--interval` changes that), gives sources fair turns within a soft four-second cycle budget (`--seconds`), and detects new files and appended records. Discovery and a single large record can exceed that budget. Source edits that require `index --rebuild` are reported and never rebuilt automatically. Stop a watcher before pruning if you want to prevent later source updates from being reimported.
 
-For ChatGPT web, a remote endpoint introduces authentication, authorization, transport and data-handling work. Treat that as a separate opt-in product decision after the local workflow earns its place. An explicit user-supplied ChatGPT export adapter is another possible increment, contingent on inspecting an authorized export and handling branches, edited messages, roles and attachment references honestly. No account scraping or implied access to all past chats.
+Launch the MCP server with one explicit repository scope:
 
-## Evidence needed before shipping an additional interface
+```sh
+python3 /path/to/recall/scripts/recall_mcp.py --db /path/to/recall.db --cwd /path/to/project
+```
 
-- A fresh GPT-powered host discovers Recall and chooses search/get from a natural request, with a correct citation.
-- A Claude-to-Codex and Codex-to-Claude handoff recovers the accepted decision and distinguishes rejected or superseded text.
-- Allowed-source boundaries hold even when a caller supplies a valid block ID from another repository.
-- Missing answers remain distinguishable from vaguely relevant hits; complete source evidence can be paginated.
-- Capture freshness and attachment-body limits are visible. Tool availability is not proof of continuous capture.
-- A matched evaluation shows the additional interface improves completion or removes a real integration obstacle without creating another ranking implementation.
+`--cwd` resolves the same repository identity used by Recall's existing commands. Alternatively supply `--repo-id` with the exact ID shown by `recall_memory.py sources`. Work done in a non-repository directory has that directory's identity; moving into a nested Git repository does not automatically move its history. Use the existing explicit `rescope` command to correct an imported source when needed.
 
-This is a recommendation, not a new release promise. P58 records the local MCP decision; P59 records the separate ChatGPT web/export decision. Neither is part of the 2.5.0 release gates unless the maintainer explicitly changes scope. The current skill/CLI route remains the supported Codex path.
+A generic stdio MCP configuration is:
+
+```json
+{
+  "mcpServers": {
+    "recall": {
+      "command": "/absolute/path/to/python3",
+      "args": ["/path/to/recall/scripts/recall_mcp.py", "--db", "/path/to/recall.db", "--cwd", "/path/to/project"]
+    }
+  }
+}
+```
+
+For Codex, the corresponding configuration is:
+
+```toml
+[mcp_servers.recall]
+command = "/absolute/path/to/python3"
+args = ["/path/to/recall/scripts/recall_mcp.py", "--db", "/path/to/recall.db", "--cwd", "/path/to/project"]
+startup_timeout_sec = 10
+tool_timeout_sec = 10
+```
+
+Codex supports local STDIO servers and project-scoped `.codex/config.toml` in trusted projects. A client starts the server; it does not automatically start the separate capture process. [Official MCP configuration documentation](https://learn.chatgpt.com/docs/extend/mcp).
+
+The four tools are `recall_search`, `recall_get`, `recall_brief` and `recall_status`. Search includes both source agents in the configured repository. Use `kind: "tool_use"` for exact commands, and follow `next_start` from get for long evidence. Briefs contain sampled historical excerpts, not a complete or live account. Status reports only that repository's known sources and derived counts. An empty search is not proof that an event never occurred.
+
+## What is verified
+
+| Client or source | Retrieval | Capture | Evidence still needed |
+|---|---|---|---|
+| Claude Code | Existing skill; real CLI MCP health check reports Connected | Existing hooks; optional explicit refresh/watch | Authenticated natural MCP/skill use and actual compact receipt in the working terminal |
+| Codex | Installed skill discovered and exercised in a live desktop task; MCP configuration supported by its host | Existing Codex adapter; independent foreground refresh/watch | Fresh desktop-task MCP discovery and natural model use |
+| Official Python MCP SDK 2.1.1 | Independent client negotiated 2025-11-25; search/get/brief/status and scope checks passed | Observed an appended Codex record from the independent watcher through the same reader | This is protocol verification, not a model-quality score |
+| Other coding clients with compatible stdio MCP support | Same endpoint/configuration contract; individual hosts not yet tested | Only Claude and Codex source formats are currently ingested | Host-specific discovery/behavior; any new transcript adapter needs format evidence and tests |
+
+The SDK probe also verifies exact Unicode pagination, rejection of another repository's block ID, empty results for an absent marker, unchanged store bytes after read calls, and clean watcher shutdown. Server and capture run with Python site packages disabled in that probe; the SDK is a developer test dependency, not a Recall runtime dependency.
+
+## Boundaries
+
+The server uses a read-only SQLite connection and a consistent read transaction per tool call. It neither initializes/migrates/repairs the store nor imports histories, executes recalled commands, or offers write tools. A missing, incompatible or broken store returns an actionable tool error. Repository scope is set outside model arguments and checked on source filters and get-by-ID as well as searches. Each call sees a fresh database connection so separately committed capture becomes visible. SQLite may use WAL coordination sidecars; read-only serving means it does not modify retained data or schema.
+
+The stdio implementation supports the 2024-11-05 through 2025-11-25 revisions listed in its code. The current SDK's fallback to 2025-11-25 was verified; the server does not claim native 2026-protocol semantics. Messages are newline-delimited JSON-RPC. Input is capped at 256 KiB; each tool's JSON payload at 65,536 characters, with smaller search/page limits. SQL has a two-second progress timeout and a 500 ms lock wait; these are not hard limits on Python work over unusually large retained blocks. [MCP transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports), [lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) and [tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
+Recall itself makes no network requests. Retrieved evidence goes to the calling host and may be sent to its configured model provider. A read-only tool annotation does not make recalled text trustworthy instructions or make cloud inference local.
+
+ChatGPT web access and ChatGPT export ingestion remain separate decisions (P59). The present implementation opens no HTTP port and does not imply access to account chat history. Additional transcript formats are also separate from allowing another client to read existing Claude/Codex evidence. P58/P60–P62 track the active implementation, host checks and cross-agent handoffs; the original activation, human-evaluation and publication gates remain.

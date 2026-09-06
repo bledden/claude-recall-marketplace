@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - Unreleased
 
 ### Added
+- Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
+- Independent foreground capture/refresh of explicitly selected Claude/Codex histories, with fair incremental progress, new-file/append detection and no automatic background-service installation.
 - Complete redacted source blocks with stable references, chunked lexical search, exact paginated retrieval and neighboring-block references. Legacy capped exchanges remain compatible.
 - Explicit, resumable Claude/Codex transcript imports with normalized repository identity across worktrees and remote URL protocols.
 - Cited-briefing evidence selection with a separately observed current Git state.

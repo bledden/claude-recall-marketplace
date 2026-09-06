@@ -581,7 +581,7 @@ claude-recall-plugin/
 │   ├── manage_sessions.py           # Session list, prune, export, stats
 │   ├── fetch_exchanges.py           # Fetch exchanges by query
 │   └── show_index.py                # Paginated index display
-├── tests/                          # 646 tests: unit + integration + skill evals + external-review regressions
+├── tests/                          # 671 tests: unit + integration + skill evals + external-review regressions
 │                                    #   + stress (scale/concurrent/clear/sharing)
 │                                    #   run with `python3 -m pytest -q` (see pytest.ini)
 ├── pytest.ini                      # Collects test_*.py AND stress_test_*.py
@@ -603,12 +603,20 @@ claude-recall-plugin/
 ```bash
 cd claude-recall-plugin
 
-# Full suite — unit, integration, and stress (646 tests)
+# Full suite — unit, integration, and stress (671 tests)
 # pytest.ini collects both test_*.py and stress_test_*.py
 python3 -m pytest -q
 ```
 
 ---
+
+## Use Recall across coding agents
+
+Claude and Codex histories can share the durable store. The installed Codex skill provides command-line retrieval; `scripts/recall_mcp.py` also exposes scoped `recall_search`, `recall_get`, `recall_brief` and `recall_status` tools to compatible local MCP clients. The server reads one configured repository and never captures or migrates data.
+
+`scripts/recall_capture.py` refreshes explicitly selected Claude/Codex files without a Claude process. Add `--watch` to keep that capture process running in the foreground. This is separate from starting the MCP reader.
+
+See [cross-agent setup and verified-client matrix](docs/gpt-expansion.md) for import commands, client configuration, scope rules, and the distinction between a connected tool and a verified model workflow. Other clients can read the supported source formats; their own transcripts require an additional adapter.
 
 ## Contributing
 
@@ -621,7 +629,7 @@ python3 -m pytest -q
 
 ## Privacy and Data Handling
 
-All data is stored **locally on your machine** in `~/.claude/context-recall/`. The plugin makes no network requests, includes no telemetry, and shares no data with any external service.
+Recall stores data **locally on your machine**, by default in `~/.claude/context-recall/` or at the explicitly configured store/export/backup path. It makes no network requests and includes no telemetry. Recalled passages are returned to the calling agent and may reach that agent’s configured model provider.
 
 For full details on what data is stored, how to delete it, and your control options, see [PRIVACY.md](PRIVACY.md).
 
@@ -655,7 +663,7 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 - **Experimental semantic search** — Default retrieval uses SQLite FTS5 (BM25 × 30-day recency). Optional local embeddings require a separate dependency and explicit build; the current small evaluation does not justify enabling them by default
 - **Attachment references are not attachment bodies** — a Codex rollout that only names an attachment path cannot supply its contents to Recall. Pasted reports keep the role recorded in the transcript.
 - **Source edit detection is windowed** — only the first 256 bytes and the 256 bytes before the saved cursor are hashed; an edit between them is not detected until an explicit rebuild
-- **Codex capture is polling, not a hook** — with `codex_import` on, new Codex work becomes recallable at the next Claude session start, not mid-turn
+- **Codex capture is polling** — the opt-in `codex_import` setting refreshes at Claude session start; the independent foreground watcher can refresh without Claude. Starting the MCP server alone does not capture new work
 - **Cross-session sharing is polling-based** — No real-time push; highlights appear on the next check interval or via `/recall inbox`
 
 ---
@@ -671,6 +679,8 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 ---
 
 ## Uninstalling
+
+If you configured the optional MCP server, remove its `recall` entry from that client’s configuration and stop any foreground `recall_capture.py --watch` process. Removing the Claude plugin alone does not remove these separately configured integrations.
 
 **If installed via marketplace:**
 ```bash
