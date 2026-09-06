@@ -42,7 +42,7 @@ def run_hook(input_data: Dict, db_path: Path = None) -> Dict:
     if not session_id:
         return {}
 
-    conn = get_connection(db_path or DB_PATH)
+    conn = get_connection(db_path)  # None -> RECALL_DB override, then the default store
     try:
         session = get_session(conn, session_id)
         if session is None:
@@ -56,12 +56,16 @@ def run_hook(input_data: Dict, db_path: Path = None) -> Dict:
         if transcript_path:
             deadline = time.monotonic() + DRAIN_BUDGET_SECONDS
             while True:
-                before = (get_session(conn, session_id) or {}).get('byte_offset', 0)
+                durable = conn.execute('SELECT byte_offset FROM memory_sources WHERE source_key=?',
+                                       ('claude:' + session_id,)).fetchone()
+                before = ((get_session(conn, session_id) or {}).get('byte_offset', 0), durable[0] if durable else 0)
                 index_transcript(conn, session_id, transcript_path,
                                  project_path=session.get('project_path') or input_data.get('cwd', ''),
                                  project_hash=session.get('project_hash') or '')
                 conn.commit()
-                after = (get_session(conn, session_id) or {}).get('byte_offset', 0)
+                durable = conn.execute('SELECT byte_offset FROM memory_sources WHERE source_key=?',
+                                       ('claude:' + session_id,)).fetchone()
+                after = ((get_session(conn, session_id) or {}).get('byte_offset', 0), durable[0] if durable else 0)
                 if after <= before or time.monotonic() > deadline:
                     break
 

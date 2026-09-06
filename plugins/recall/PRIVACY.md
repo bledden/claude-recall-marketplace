@@ -9,6 +9,7 @@ The recall plugin stores conversation data locally on your machine to enable con
 | Data | Location | Purpose |
 |---|---|---|
 | Exchange text | `~/.claude/context-recall/recall.db` | User prompts (up to 1,000 chars) and assistant responses (all text blocks of the turn merged, up to 4,000 chars) for search and recall |
+| Durable blocks and passages (2.5+) | Same DB (memory tables) | Complete redacted user/assistant text and tool-call inputs, plus derived search slices. Unlike legacy exchange rows, retained blocks are not truncated |
 | Tool calls (v2.4+) | Same DB (exchanges.tool_text) | One line per tool call Claude made in the turn: the shell command, the file path edited/read, the URL fetched, or the tool name (300 chars per call, 2,000 per exchange). Tool **output** is never stored |
 | Session metadata | Same DB | Session IDs, project paths, timestamps, byte offsets for incremental indexing |
 | Auto-tags | Same DB | Technical terms extracted from exchange text for search and discovery |
@@ -18,28 +19,30 @@ The recall plugin stores conversation data locally on your machine to enable con
 | Session config | Same DB (sessions.metadata) | User preferences (skill_enabled, check_mode, etc.) |
 | Usage counter (v2.2.3+) | Same DB (invocations) | Timestamp, session ID, project hash, command name, and command arguments for each recall invocation — arguments may include search terms you typed. Powers `/recall usage`; never leaves your machine |
 | Recall events | `~/.claude/recall-events.log` | Timestamps and session IDs when `/recall` is invoked (for observability) |
+| Settings (2.5+) | `~/.claude/context-recall/settings.json` | Explicit opt-ins only (Codex import on/off, its directory and time budget). No conversation content |
+| Backups (2.5+, on request) | Wherever you point `backup DEST` (the default location suggested by docs is the same directory) | A complete copy of the store, including retained text. Delete backups when you delete the store |
 
 ## Where Data Is Stored
 
-All data is stored **locally on your machine** in the `~/.claude/` directory. The plugin:
+All data is stored **locally on your machine**, by default under `~/.claude/context-recall/`; backups, exports and a store selected with `RECALL_DB` live wherever you put them. The plugin:
 
 - Does **not** transmit data to any external server
 - Does **not** make any network requests
-- Does **not** share data with Anthropic or any third party
+- Does **not** independently send stored data to third parties. Recalled passages enter the host agent's context and may be sent to its configured provider
 - Does **not** include any telemetry, analytics, or tracking
 
-The database directory is created with restricted permissions (0o700 — owner-only access).
+The default database directory is created with owner-only permissions (0o700) when the plugin first creates it; an existing directory, or a store you selected elsewhere, keeps the permissions it has.
 
 ## What Data Is NOT Stored
 
-- Full conversation transcripts (only truncated exchange text: up to 1,000 chars per user prompt and 4,000 chars per assistant reply; tool output and thinking are never stored, tool calls only in the compact form above)
+- Complete raw transcripts: durable adapters exclude system/developer records, reasoning, tool results, image content blocks, and inline base64 data URIs. User/assistant prose and tool-call inputs are retained in full after redaction
 - Credentials that match the redaction patterns below (see Secrets Redaction; this is pattern-based, not a guarantee)
 - System information beyond project directory paths
-- Any data from other applications
+- Other application histories unless explicitly selected for import (Codex JSONL imports are supported)
 
 ## Secrets Redaction
 
-Before anything is written, captured text (prompts, replies, tool-call lines) passes through `redact_secrets()`, which replaces matches with `[REDACTED:<kind>]`:
+Newly captured text (prompts, replies, tool-call lines and durable blocks) passes through `redact_secrets()` before it is written, replacing matches with `[REDACTED:<kind>]`. Text that enters the store by other routes keeps whatever redaction it had when it was produced: a v1 index migration, `import-export`, `restore` of an older backup, and highlights or tags you write yourself. The patterns:
 
 - Well-known token formats: AWS access keys, OpenAI and Anthropic keys, GitHub tokens, Hugging Face tokens, Slack tokens, Google API keys, JWTs, `Bearer …` tokens, PEM private-key blocks
 - Assignments whose name looks like a secret (`API_KEY=…`, `"password": "…"`, `AWS_SECRET_ACCESS_KEY=…`)
@@ -51,9 +54,10 @@ This is pattern matching, not detection of every secret. Anything that does not 
 
 Data persists in the SQLite database until you explicitly delete it. The plugin does not auto-prune or expire data. You control retention entirely:
 
-- `/recall prune --session <id>` — delete a specific session and all its data
+- `/recall prune --session <id>` — delete a legacy session and matching durable data
+- `python3 scripts/recall_memory.py prune AGENT:SESSION` — delete an explicitly imported durable source, passages and vectors; legacy exchange rows and original transcripts remain
 - `/recall prune --before <date>` — delete all sessions before a date
-- `rm -rf ~/.claude/context-recall/` — delete all recall data permanently
+- `rm -rf ~/.claude/context-recall/` — delete all recall data in the default location permanently (backups, exports and alternate stores you created elsewhere are separate files)
 - `rm ~/.claude/recall-events.log` — delete the event log
 
 Versions prior to 2.0 stored snapshots as JSON files (`*_index.json`, `current.json`, `recall-config.json`) in the same `~/.claude/context-recall/` directory. Current versions no longer write these, but old files may remain; the `rm -rf` above removes them along with everything else.
@@ -62,13 +66,13 @@ Versions prior to 2.0 stored snapshots as JSON files (`*_index.json`, `current.j
 
 You have full control over what the plugin stores:
 
-- **Opt-in features**: Auto-highlight detection, decay polling, system message injection, and the recall assistant skill are all disabled by default. You enable them explicitly via `/recall config`.
-- **Cross-session sharing**: Session connections are opt-in. No data is shared between sessions unless you explicitly run `/recall connect`.
+- **Opt-in features**: auto-highlight detection, decay polling, proactive recall suggestions and the optional recall-assistant skill are disabled by default; you enable them via `/recall config`. **On by default**: capture, the model-invoked `recall` skill, and compaction recovery (the verbatim excerpts of this session's own retained blocks described below).
+- **Cross-session retrieval**: Explicit connections control automatic highlight sharing. Search and brief can retrieve other indexed sessions in the same repository, or all repositories with `--all`; they do not require a connection.
 - **Deletion**: All data can be deleted at any time via the prune commands or by removing the database file.
 
 ## Third-Party Dependencies
 
-The plugin uses only Python standard library modules (`sqlite3`, `json`, `os`, `sys`, `re`, `datetime`, `pathlib`, `collections`). No third-party packages are installed, downloaded, or executed.
+Default capture, lexical retrieval and diagnostics use only Python standard library modules. Optional semantic indexing/search uses sentence-transformers and its dependencies, including NumPy and PyTorch, which the user installs separately. Recall neither installs these packages nor downloads models; semantic commands load a supplied local model with remote code disabled.
 
 ## Changes to This Policy
 
@@ -77,3 +81,15 @@ Changes to this privacy policy will be documented in the plugin's CHANGELOG.md a
 ## Contact
 
 For questions about data handling: [https://github.com/bledden/claude-recall-plugin/issues](https://github.com/bledden/claude-recall-plugin/issues)
+
+## Durable blocks in 2.5.0
+
+In addition to the capped legacy exchange rows described above, the durable store retains complete redacted user/assistant text blocks and complete redacted tool-call inputs, with source agent/session/message identity, source path, Git repository identity, timestamps, and character/byte ranges. Search passages are derived slices; display limits do not impose a storage truncation limit. This increases local data retention and database size. Pattern-based secret redaction remains incomplete. System/developer records, reasoning blocks, tool results, image blocks, and inline base64 data URIs are excluded by the new adapters.
+
+Claude hooks capture these blocks. Codex and bulk history imports run only against explicitly selected local files/directories, or, after you run `config codex_import on`, against your Codex sessions directory at each Claude session start (newest files first, a few seconds per start). The plugin does not import other histories unless one of those two explicit steps was taken. Retained blocks remain after original transcripts disappear. Explicit rebuild replaces a source; durable prune removes its blocks, search passages and vectors. Original transcripts and separate legacy rows are unaffected by durable-only prune. Legacy session prune removes both legacy and matching durable data.
+
+After a context compaction, the session-start hook injects short verbatim excerpts of this session's own retained blocks (the opening ask and the tails of the last three text blocks, at most 3,500 characters) into Claude's context so it can re-anchor; like any recalled passage, that text then reaches the host agent's provider.
+
+Deletion at a glance: legacy session prune removes that session's legacy rows and durable blocks; durable `prune AGENT:SESSION` removes blocks, passages and vectors but leaves legacy rows and the original transcript; `export`/`import-export` move complete redacted blocks; `backup`/`restore` copy the whole store.
+
+Optional semantic indexing stores local embedding vectors plus the supplied model path/fingerprint. It loads an existing local model through an optional third-party sentence-transformers dependency, with downloads and remote code disabled. The default capture and lexical retrieval paths do not load it. Retrieved passages enter the host agent's context and may be sent to that agent's configured provider; local plugin storage is not a promise that a cloud agent never receives recalled content.

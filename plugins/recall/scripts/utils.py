@@ -86,16 +86,21 @@ _SECRET_PATTERNS = [
     ('huggingface-token', re.compile(r'\bhf_[A-Za-z0-9]{20,}')),
     ('slack-token', re.compile(r'\bxox[abprs]-[A-Za-z0-9-]{10,}')),
     ('google-api-key', re.compile(r'\bAIza[0-9A-Za-z_-]{35}')),
-    ('bearer-token', re.compile(r'(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{20,}')),
+    ('bearer-token', re.compile(r'(?i)\bbearer\s{1,8}[A-Za-z0-9._~+/=-]{20,}')),
     ('jwt', re.compile(r'\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}')),
     # generic KEY=value / "key": "value" assignments whose NAME looks secret-ish
     # (AWS_SECRET_ACCESS_KEY=…, "api_key": "…", DB_PASSWORD=…)
+    # Every quantifier is bounded AND every whitespace run is followed by a
+    # required token, so each match has one partition. History: an unbounded
+    # `[...]*` before the keyword was quadratic on long no-space runs (2.4.0);
+    # the delimiter `\s*["']?\s*` was quadratic on long whitespace runs
+    # (R01, found in review of 2.5.0: 16k spaces = 1 s, 64k = hang).
     ('credential', re.compile(
-        r'(?i)([A-Za-z0-9_.-]*(?:api[_-]?key|secret|token|passw(?:or)?d|pwd|access[_-]?key|private[_-]?key)[A-Za-z0-9_.-]*)'
-        r'(\s*["\']?\s*[:=]\s*["\']?)([A-Za-z0-9._~+/=-]{8,})')),
+        r'(?i)(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]{0,48}(?:api[_-]?key|secret|token|passw(?:or)?d|pwd|access[_-]?key|private[_-]?key)[A-Za-z0-9_.-]{0,48})'
+        r'([ \t]{0,8}["\']?[ \t]{0,8}[:=][ \t]{0,8}["\']?)([A-Za-z0-9._~+/=-]{8,512})')),
     # natural language: "my password is hunter2-hunter2", "the api key was …"
     ('credential', re.compile(
-        r'(?i)\b((?:api[ _-]?key|secret[ _-]?key|access[ _-]?key|password|passwd|passphrase|token)\s+(?:is|was|=|:)\s+["\']?)'
+        r'(?i)\b((?:api[ _-]?key|secret[ _-]?key|access[ _-]?key|password|passwd|passphrase|token)[ \t]{1,8}(?:is|was|=|:)[ \t]{1,8}["\']?)'
         r'()([^\s"\']{8,})')),
 ]
 

@@ -28,6 +28,11 @@ class TestRecallSkill(unittest.TestCase):
         for phrase in ('earlier', 'previous session', 'command'):
             self.assertIn(phrase, desc.lower())
 
+    def test_documents_one_default_recovery_path(self):
+        self.assertIn('Default recovery path', self.body)
+        self.assertIn('source_count', self.body)
+        self.assertIn('--legacy', self.body)
+
     def test_allows_python_fallback(self):
         self.assertIn('Bash(python:*)', self.fm)
 

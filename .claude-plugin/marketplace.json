@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "recall-local",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Local marketplace for the recall plugin",
   "owner": {
     "name": "bledden",
@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "recall",
-      "description": "Cross-session, cross-project conversation recall: verbatim exchanges and the commands Claude ran, ranked search with match snippets, secrets redacted at index time, compaction recovery, highlight sharing, and a skill Claude invokes on its own",
+      "description": "Cross-session, cross-project conversation recall: verbatim exchanges and the commands Claude ran, ranked search with match snippets, secrets redacted at index time, compaction recovery, highlight sharing, a durable evidence store with cited retrieval across Claude and Codex sessions, and a skill Claude invokes on its own",
       "source": "./plugins/recall",
       "category": "productivity"
     }

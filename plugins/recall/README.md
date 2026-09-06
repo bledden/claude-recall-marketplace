@@ -1,8 +1,12 @@
-# Claude Recall Plugin v2.4.0
+<!-- Durable-memory work on feat/durable-memory; not yet published. -->
+
+# Claude Recall Plugin v2.5.0 (unreleased)
+
+[Current update-window plan](docs/update-window-plan.md): remaining product work, historical deferrals, integration and release status.
 
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that persists conversation context across sessions, `/clear` commands, and compaction events. It adds cross-session search, tagging, highlight sharing between sessions, and observability.
 
-> **Marketplace Status:** Published in Anthropic's community marketplace as `recall@claude-community` (`/plugin marketplace add anthropics/claude-plugins-community`, then install `recall`). The catalog tracks this repo's `main`.
+> **Marketplace Status:** Published in Anthropic's community marketplace as `recall@claude-community` (`/plugin marketplace add anthropics/claude-plugins-community`, then install `recall`). The catalog entry is pinned to one commit of this repo and is moved by pull request, so it can lag the releases here.
 >
 > **Pre-built Marketplace:** [claude-recall-marketplace](https://github.com/bledden/claude-recall-marketplace) (the same release, and the only reliable path for the VSCode extension)
 
@@ -12,7 +16,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that pers
 
 Claude Code ships with `/recap`, `/resume`, and a `memory/` directory. Recall is positioned around what those do **not** cover:
 
-- **Cross-project full-text search (FTS5).** Native `/recap` and `/resume` operate within the current session/project. Recall indexes every exchange into SQLite FTS5 and searches across **all** sessions in a project (`--all`) or across **every** project (`--global`) — including past, closed sessions.
+- **Cross-project full-text search (FTS5).** Native `/recap` and `/resume` operate within the current session/project. Recall indexes every exchange into SQLite FTS5 and searches this session (`search`), every session of this repository (`--all`) or every repository (`--global`) — including past, closed sessions. Since 2.5 the default search reads the durable store of complete text; `--legacy` reads the capped exchange rows.
 - **Tagging.** Apply manual tags to sessions or individual exchanges, plus automatic keyword extraction, then query them across projects (`/recall tag`, `/recall tags`, `/recall search --tag`). The native `memory/` directory is freeform notes, not a queryable tag index.
 - **Highlight & connection sharing between parallel sessions.** Link two live sessions and share findings as lightweight highlights delivered to a connected session's inbox (`/recall connect`, `/recall highlight`, `/recall inbox`). Native Claude Code has no mechanism to push a finding from one session to another.
 - **The exact commands Claude ran.** Tool calls (shell commands, files edited, URLs fetched) are indexed alongside the prose, so "how did we spin up that pod" returns the real command line from the real session, not a reconstruction.
@@ -24,7 +28,7 @@ If you only need to re-anchor within the current session, native `/recap` / `/re
 ## Requirements
 
 - **Claude Code** 2.1.x or later (uses the `Stop` hook and the `SessionStart` `compact` matcher; see the 2.1.x note below), or **Claude Cowork** (macOS desktop app)
-- **Python 3.6+** (for hook and script execution)
+- **Python 3.9+** (for hook and script execution; the durable store uses `str.removesuffix`, so 3.6–3.8 fail)
 
 ---
 
@@ -56,7 +60,7 @@ The plugin will appear in your Cowork plugins list. Invoke with `/recall` during
 
 ### Claude Code: Option 1 - Pre-Built Marketplace (Recommended for VSCode)
 
-This is the recommended method: it always serves the latest release, and it is the only reliable method for the VSCode extension. (The community-marketplace listing `recall@claude-community` serves the same release.)
+This is the recommended method: it serves the latest published release, and it is the only reliable method for the VSCode extension. (The community-marketplace listing `recall@claude-community` is pinned to a commit and may lag this marketplace.)
 
 ```bash
 claude plugin marketplace add https://github.com/bledden/claude-recall-marketplace
@@ -200,7 +204,7 @@ This will:
 /recall session <id> last10         Browse a specific past session
 ```
 
-> **`--project` matching:** For `search --project <name>` and `sessions --project <name>`, `<name>` is matched as an **unanchored substring** of the stored project path (`LIKE '%name%'`, case-sensitive) — any session whose project path contains the substring matches.
+> **`--project` matching:** For `search --project <name>` and `sessions --project <name>`, `<name>` is matched as an **unanchored substring** of the stored project path (`LIKE '%name%'`, case-insensitive for ASCII letters (SQLite default)) — any session whose project path contains the substring matches.
 >
 > **`tags --project` is different:** `/recall tags --project <hash>` expects a project **HASH** (exact match), *not* a name/path. This is distinct from `sessions --project <name>`, which takes a name/path.
 
@@ -263,11 +267,11 @@ The plugin understands various time formats:
 
 ### 1. Per-Turn Capture and /clear Survival
 
-Every completed turn is indexed by a `Stop` hook the moment Claude finishes responding (with a `UserPromptSubmit` pass as belt-and-braces and a final catch-up on `SessionEnd`), so the last thing said in a session is never lost. The whole reply is kept: all of Claude's text blocks between two prompts are merged into one exchange, not just the first "let me look" block. Context is persisted to SQLite before `/clear` executes, so clearing the window no longer means losing the record of what happened.
+Every completed turn is indexed by a `Stop` hook the moment Claude finishes responding (with a `UserPromptSubmit` pass as belt-and-braces and a final catch-up on `SessionEnd`), so the last thing said in a session is normally captured without waiting for another prompt. Capture reads the transcript file, so a record that has not been flushed to disk yet is picked up by a later pass (the next prompt, or the bounded `SessionEnd` drain), and `/recall status` shows any backlog that remains. Legacy exchange rows still truncate at 4,000 characters per reply; since 2.5.0 the durable store keeps the complete redacted text and `get <block_id>` pages through it. The whole reply is kept: all of Claude's text blocks between two prompts are merged into one exchange, not just the first "let me look" block. Context is persisted to SQLite before `/clear` executes, so clearing the window no longer means losing the record of what happened.
 
 ### 2. Cross-Session Search
 
-Search across all sessions in a project with `--all`, or across every project you've worked in with `--global`. Results include session ID, project, timestamp, and a content preview.
+Search this session by default, every session of this repository with `--all`, or every repository you've worked in with `--global`. Durable results carry a block id, character range and `get` reference; legacy results (`--legacy`) include session ID, project, timestamp and a content preview.
 
 ```
 /recall search "auth flow" --all
@@ -337,7 +341,7 @@ Multiple Claude sessions in the same project write to the same database without 
 
 ### 9. SQLite Storage
 
-All context is stored in a single SQLite database (`recall.db`) with FTS5 for full-text search. No JSON files, no external dependencies beyond Python's built-in `sqlite3` module.
+All context is stored in a single SQLite database (`recall.db`) with FTS5 for full-text search, plus one small `settings.json` for global opt-ins. No external dependencies beyond Python's built-in `sqlite3` module.
 
 ### 10. Timestamped Conversation Index
 
@@ -359,7 +363,7 @@ Jan 6:
 
 ### 11. Full-Content Search
 
-Search looks in user prompts, assistant responses and the tool calls of each exchange. Multi-word queries use AND logic — both terms must appear anywhere in the exchange. Force exact phrase matching by quoting: `search "the fix is"`. Terms are stemmed (`kernel` matches `kernels`). Results are **ranked**: BM25 relevance re-weighted by recency (a hit 30 days old keeps half its weight; `--half-life 0` for pure relevance), best match first, and every hit shows the passage that matched:
+Search looks in user prompts, assistant responses and the tool calls of each exchange. **Durable search (default since 2.5):** terms are combined with OR after common question words are dropped, `--require-all` demands every term, quoting does not make a multi-word phrase exact, and `--kind tool_use` searches commands instead of prose. **Legacy search (`--legacy`):** multi-word queries use AND logic and a quoted string is matched as an exact phrase. Both stem terms (`kernel` matches `kernels`). Results are **ranked**: BM25 relevance blended with recency (the recency component halves every 30 days, and a hit's total weight never drops below half its relevance score; `--half-life 0` for pure relevance), best match first, and every hit shows the passage that matched:
 
 ```
 ### Exchange #162 [Sep 5 6:41 pm]
@@ -372,7 +376,7 @@ Search looks in user prompts, assistant responses and the tool calls of each exc
 /recall search "auth flow"
 ```
 
-Results show up to 10 most recent matches, grouped by date.
+Durable search returns the top 5 ranked passages (`--limit` up to 50); legacy search shows up to 10 most recent matches, grouped by date.
 
 ### 12. Observability Logging
 
@@ -495,12 +499,12 @@ Five hook registrations:
 - **SessionStart** — Exports the session's env vars (a legacy fallback for resolving the current session/project; the native `CLAUDE_CODE_SESSION_ID` is preferred).
 - **SessionStart (`matcher: "compact"`)** — After a compaction, injects a context-recovery note into Claude's context (`additionalContext`) so it re-anchors on the session state.
 - **UserPromptSubmit** — Indexes any completed turns not yet captured, runs connection checks (decay mode), auto-highlight detection, and the deterministic proactive-recall suggestion (all if enabled). Anything Claude must act on is returned as `additionalContext`; `systemMessage` is reserved for user-facing notices.
-- **Stop** — Indexes the turn that just completed. The transcript can lag the in-memory turn; whatever is on disk is stored now and any assistant blocks that land later are appended to the same exchange (FTS kept in sync), so nothing is orphaned.
-- **SessionEnd** — Drains the remaining backlog in committed passes (7s budget), then finalizes the session record.
+- **Stop** — Indexes the turn that just completed. The transcript can lag the in-memory turn; whatever is on disk is stored now and assistant blocks that land later are appended to the same exchange (FTS kept in sync) by the next pass.
+- **SessionEnd** — Drains the remaining backlog in committed passes within a 7 s budget, then finalizes the session record; anything beyond the budget stays as backlog for the next session's hooks.
 
 ### Storage
 
-SQLite with FTS5 for full-text search and WAL mode for concurrent session safety. All data lives in a single file — no external services, no dependencies beyond Python's standard library.
+SQLite with FTS5 for full-text search and WAL mode for concurrent session safety. Default capture and lexical search need no external services or dependencies beyond Python's standard library. Optional semantic commands use separately installed sentence-transformers dependencies and an existing local model.
 
 ### Tagging
 
@@ -519,7 +523,7 @@ Highlights are created via two paths: explicit (Claude runs `/recall highlight`)
 ~/.claude/recall-events.log            Recall event log (unchanged from v1)
 ```
 
-The database contains six tables:
+The database contains these legacy tables, plus the 2.5 durable-store tables `memory_sources`, `memory_blocks`, `memory_chunks`, `memory_fts`, `memory_vectors` and `memory_semantic_config`:
 - `sessions` — one row per session, with project, timestamps, and metadata (including per-session config like `auto_highlight`)
 - `exchanges` — one row per exchange: user text, merged assistant text, and `tool_text` (one line per tool call)
 - `tags` — session and exchange-level tags
@@ -527,7 +531,7 @@ The database contains six tables:
 - `connections` — opt-in links between sessions; stores `check_mode`, `check_interval`, `delivery_mode`, and `last_checked_at`
 - `invocations` (v2.2.3+) — one row per recall command invocation (timestamp, session, project hash, command, args); powers `/recall usage`
 
-An FTS5 virtual table (porter stemming, schema v5) indexes prompts, replies, previews and tool calls; searches rank by BM25 × recency and return match snippets.
+The legacy FTS5 virtual table (porter stemming, introduced in schema v5) indexes capped prompts, replies, previews and tool calls; legacy searches rank by BM25 × recency and return match snippets. Schema v6 adds the separate durable source/block/passage tables described below.
 
 ---
 
@@ -554,7 +558,7 @@ wc -l ~/.claude/recall-events.log
 ```
 claude-recall-plugin/
 ├── .claude-plugin/
-│   └── plugin.json                  # Plugin metadata (v2.4.0)
+│   └── plugin.json                  # Plugin metadata (v2.5.0 development)
 ├── skills/
 │   ├── recall/
 │   │   └── SKILL.md                 # The /recall:recall skill (Claude can invoke it on its own)
@@ -577,7 +581,7 @@ claude-recall-plugin/
 │   ├── manage_sessions.py           # Session list, prune, export, stats
 │   ├── fetch_exchanges.py           # Fetch exchanges by query
 │   └── show_index.py                # Paginated index display
-├── tests/                          # 459 tests: unit + integration + skill evals + external-review regressions
+├── tests/                          # 584 tests: unit + integration + skill evals + external-review regressions
 │                                    #   + stress (scale/concurrent/clear/sharing)
 │                                    #   run with `python3 -m pytest -q` (see pytest.ini)
 ├── pytest.ini                      # Collects test_*.py AND stress_test_*.py
@@ -599,7 +603,7 @@ claude-recall-plugin/
 ```bash
 cd claude-recall-plugin
 
-# Full suite — unit, integration, and stress (459 tests)
+# Full suite — unit, integration, and stress (584 tests)
 # pytest.ini collects both test_*.py and stress_test_*.py
 python3 -m pytest -q
 ```
@@ -634,12 +638,12 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 - All SQL queries use parameterized statements
 - No dynamic code execution of any kind
 - No external network requests or downloads
-- Error messages do not leak file paths or internal state
-- Transcript reads are bounded (2MB / 1000 messages per hook invocation; progress banks across prompts so large transcripts converge) and a turn is only committed once it is complete
-- Stored text is capped: 1,000 chars per user prompt, 4,000 chars per assistant reply, 2,000 chars of tool-call lines; tool output and thinking are never stored
+- Diagnostic output includes local source paths and capture state for troubleshooting
+- Legacy and durable capture each process up to 2 MB / 1,000 records per pass, allowing one oversized record to ensure progress. These are soft budgets, not hard memory or time limits; SessionEnd drains within a soft time budget
+- Legacy exchanges retain capped text (1,000 chars per prompt, 4,000 per reply, 2,000 of compact tool calls). Version 2.5 also retains complete redacted source blocks and tool-call inputs; tool output and thinking remain excluded
 - Credential-looking strings are redacted before storage (see PRIVACY.md)
 - Hook commands quote the interpreter and script path (plugin roots with spaces work)
-- Database directory created with restricted permissions (0o700)
+- Default database directory created with owner-only permissions (0o700) when first created
 - Hook stdin reads bounded to 1MB
 
 ---
@@ -648,7 +652,9 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 
 - **Claude Cowork requires zip upload** — Cowork does not yet support marketplace installation; upload the plugin zip file manually via the Plugins sidebar
 - **VSCode extension requires marketplace** — Due to a [breaking change in 2.1.x](https://github.com/anthropics/claude-code/issues/17089), the VSCode extension requires the marketplace installation method
-- **No semantic/embedding search** — Search is keyword-based via SQLite FTS5; embedding/vector search is not supported yet
+- **Experimental semantic search** — Default retrieval uses SQLite FTS5 (BM25 × 30-day recency). Optional local embeddings require a separate dependency and explicit build; the current small evaluation does not justify enabling them by default
+- **Source edit detection is windowed** — only the first 256 bytes and the 256 bytes before the saved cursor are hashed; an edit between them is not detected until an explicit rebuild
+- **Codex capture is polling, not a hook** — with `codex_import` on, new Codex work becomes recallable at the next Claude session start, not mid-turn
 - **Cross-session sharing is polling-based** — No real-time push; highlights appear on the next check interval or via `/recall inbox`
 
 ---
@@ -659,7 +665,7 @@ To report a security vulnerability, please open an issue at [github.com/bledden/
 
 **Hooks don't seem to fire on Linux** — if your environment ships `python` but not `python3` on `PATH`, upgrade to **v2.2.2+** (hooks now probe for `python3` and fall back to `python`).
 
-**`/recall` shows an old or partial session** — on very large, actively-growing transcripts the indexer catches up incrementally over several turns (2 MB per hook run) and always makes progress, even on a single multi-MB record; `SessionEnd` drains whatever is left. **v2.3+** captures each turn as it completes via the `Stop` hook, so the most recent exchange is normally already there. `/recall usage` reports your invocation history.
+**`/recall` shows an old or partial session** — on very large, actively-growing transcripts the indexer catches up incrementally over several turns (2 MB per hook run) and makes progress on every pass, even on a single multi-MB record; `SessionEnd` drains within its budget and `/recall status` shows what remains. **v2.3+** captures each turn as it completes via the `Stop` hook, so the most recent exchange is normally already there. `/recall usage` reports your invocation history.
 
 ---
 
@@ -690,3 +696,23 @@ See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 ## License
 
 MIT License - see LICENSE file for details.
+
+## Durable evidence and cross-agent recovery (2.5.0, unreleased)
+
+`/recall find "why did we reject batching"` searches complete redacted text in indexed Claude and Codex sessions. Each result includes a stable block reference and a precise character range. `/recall get <block_id>` reads it, optionally with `--start N` and `--neighbors N`. Pagination limits output, not retained text. Legacy `/recall search`, `lastN`, and `around` continue to read capped exchange rows; `find`/`get` use the durable block store.
+
+`/recall brief` returns selected historical passages for the host agent to synthesize into a cited project briefing. Current Git state is observed separately. The briefing is a sample, not evidence that an unselected decision never occurred. No generative model runs during capture or briefing selection.
+
+`/recall index /explicit/path --agent claude` (or `codex`) imports a file or JSONL directory. Imports are resumable and idempotent, and never sweep personal history directories implicitly. Normal Claude hooks capture durable blocks too. Existing indexed sessions backfill as their hooks run, or through an explicit import. Missing original files leave retained text readable; old truncated rows cannot restore text that is no longer available in a transcript.
+
+Repository identity uses a normalized Git remote when available, then the common Git directory, then the directory path. This groups worktrees and SSH/HTTPS checkouts of the same remote. Agent/session identities stay separate. Codex support currently imports `response_item` messages/tool calls and the older top-level `message` format; mirrored events, internal instructions and reasoning are excluded. Continuous Codex capture is not installed automatically.
+
+`/recall status` and `/recall doctor` show capture time, backlog, why records were skipped (`excluded_by_policy`, `metadata_records`, `unsupported` with the record types, `malformed`), missing/changed sources, database checks, and one concrete next action per source. `sources --offset N` continues a source listing. A changed source is never overwritten silently: `index PATH --agent AGENT --rebuild` starts a new generation and rescans from byte 0. Messages the rescan has not reached keep their old text until the rescan reaches end of file, when anything the file no longer contains is deleted; a message whose id is unchanged but whose text changed is replaced at the moment the rescan reaches it. An interrupted rebuild resumes on the next index pass, also after a transient source-changed state, and `rescope AGENT:SESSION --cwd DIR` pins a corrected repository scope against later passes (`--auto` unpins). During a rebuild, results can mix old and new content; a block id resolves to its latest indexed text, not to an immutable snapshot.
+
+After a compaction, the session-start hook re-anchors Claude with verbatim excerpts from the durable store (opening ask + tails of the last three text blocks, each cited with `get <block_id> --start N`, ≤ 3,500 chars, never repeated for an unchanged state).
+
+Cross-agent: `config codex_import on` imports new Codex rollouts at each Claude session start (newest first, 4 s budget); `install-codex-skill` writes a Codex skill that points at this plugin's `recall_memory.py` into `~/.agents/skills` (the user-skills location in current Codex documentation; `--skills-dir ~/.codex/skills` for older hosts), so Codex sessions can query the same store; confirm in a fresh Codex task that `recall` appears in its skills. Both are explicit opt-ins.
+
+Optional local semantic retrieval uses one sentence-transformers backend. Install that optional package yourself and supply an existing local model directory to `/recall semantic-build --model-path /path/to/model`. No model download occurs. Searches use it only with `--semantic`; otherwise the runtime remains Python stdlib only. Models are fingerprinted, vectors are invalidated when source blocks change, and new passages require another explicit build. This is experimental pending retrieval evaluation; see `benchmarks/README.md`.
+
+All new operations are available directly through `python3 scripts/recall_memory.py --help`; `--db PATH` before the operation selects an isolated store. See `docs/durable-memory.md` for rollout and validation.

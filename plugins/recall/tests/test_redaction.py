@@ -58,3 +58,19 @@ class TestRedactSecrets(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRedactionIsLinear(unittest.TestCase):
+    """v2.4.0's generic credential pattern backtracked quadratically on long
+    no-space runs (20k chars: 7 s; 80k: hang), which would time out the capture
+    hook on a pasted blob. All quantifiers are now bounded."""
+
+    def test_long_no_space_runs_are_fast(self):
+        import time
+        for n in (80_000, 400_000):
+            t = time.perf_counter(); redact_secrets('x' * n); dt = time.perf_counter() - t
+            self.assertLess(dt, 0.5, f"{n} chars took {dt:.2f}s")
+
+    def test_still_redacts_assignments(self):
+        out = redact_secrets('export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY')
+        self.assertIn('[REDACTED:credential]', out); self.assertNotIn('wJalr', out)

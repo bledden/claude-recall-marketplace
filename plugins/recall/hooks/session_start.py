@@ -24,6 +24,7 @@ from typing import Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 from utils import compute_project_hash
+import time
 
 
 def run_hook(input_data: Dict, env_file: Optional[Path] = None) -> Dict:
@@ -51,7 +52,42 @@ def run_hook(input_data: Dict, env_file: Optional[Path] = None) -> Dict:
             f.write(f"export RECALL_SESSION_ID={session_id}\n")
             f.write(f"export RECALL_PROJECT_HASH={project_hash}\n")
 
+    # Opt-in cross-agent capture: import new Codex rollouts (newest first) within a
+    # small time budget so Codex work is recallable from Claude. Never fails the hook.
+    try:
+        import settings
+        cfg = settings.load()
+        if cfg.get('codex_import'):
+            import_codex(cfg)
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"[context-recall] Codex import skipped: {exc}", file=sys.stderr)
     return {}
+
+
+def import_codex(cfg, db_path=None):
+    """Bounded, resumable import of Codex rollout files into the durable store."""
+    from db import get_connection
+    import memory_store as memory
+    root = Path(cfg.get('codex_sessions_dir', '~/.codex/sessions')).expanduser()
+    if not root.is_dir():
+        return {'imported': 0, 'reason': 'codex sessions dir missing'}
+    deadline = time.monotonic() + float(cfg.get('codex_import_seconds', 4.0))
+    files = sorted(root.rglob('*.jsonl'), key=lambda f: f.stat().st_mtime, reverse=True)
+    conn = get_connection(db_path)
+    done = 0
+    try:
+        for path in files:
+            while time.monotonic() < deadline:
+                result = memory.index_file(conn, path, agent='codex')
+                conn.commit()
+                if result['state'] not in ('backlog', 'rebuilding'):
+                    break
+            else:
+                break
+            done += 1
+    finally:
+        conn.close()
+    return {'imported': done, 'budget_exhausted': time.monotonic() >= deadline}
 
 
 def main():

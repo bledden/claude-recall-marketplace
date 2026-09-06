@@ -32,7 +32,9 @@ DB_BUSY_TIMEOUT_MS = 5000
 #   v3: invocations table (usage counter)
 #   v4: FTS5 tokenizer switched to porter stemming (rebuilds exchanges_fts)
 #   v5: exchanges.tool_text (commands/files Claude touched) + FTS column (rebuild)
-SCHEMA_VERSION = 5
+#   v6: durable memory tables (sources/blocks/chunks/vectors)
+#   v7: memory_sources skipped-record classification columns
+SCHEMA_VERSION = 9
 
 # ---------------------------------------------------------------------------
 # Schema SQL
@@ -167,6 +169,8 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     ).fetchone()
     if row is None:
         conn.executescript(_SCHEMA_SQL)
+        from memory_store import initialize
+        initialize(conn)
         # A fresh store is already at the current schema — stamp it so no
         # migration (e.g. the v4 FTS rebuild) runs needlessly.
         conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
@@ -212,6 +216,14 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
             "  content=exchanges, content_rowid=id, tokenize='porter unicode61');"
             "INSERT INTO exchanges_fts(exchanges_fts) VALUES('rebuild');"
         )
+    if current < 7:
+        from memory_store import initialize
+        initialize(conn)   # idempotent: creates v6 tables, adds v7 columns
+    if current < 9:
+        # v8: memory_blocks(source_key, message_key) index. v9: (source_key, generation, seq)
+        # index, memory_sources.scope_pinned, packed float32 vectors. initialize() is idempotent.
+        from memory_store import initialize
+        initialize(conn)   # idempotent: creates v6 tables, adds v7 columns
     conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
     conn.commit()
 
@@ -632,6 +644,7 @@ def search_exchanges_global(conn: sqlite3.Connection, query: str,
 
 def _prune_session_no_commit(conn: sqlite3.Connection, session_id: str) -> None:
     """Delete a session's data without committing. Caller owns the transaction."""
+    conn.execute('DELETE FROM memory_sources WHERE session_id=?', (session_id,))
     _delete_fts_rows(conn, session_id)
     conn.execute("DELETE FROM tags WHERE session_id = ?", (session_id,))
     conn.execute("DELETE FROM highlights WHERE session_id = ?", (session_id,))

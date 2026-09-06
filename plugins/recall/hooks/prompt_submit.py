@@ -245,6 +245,17 @@ def build_new_exchanges(
 # Legacy migration
 # ---------------------------------------------------------------------------
 
+def _legacy_index_for(conn) -> Path:
+    """index.json beside the connection's database file (default: LEGACY_INDEX_FILE)."""
+    try:
+        db_file = conn.execute('PRAGMA database_list').fetchone()[2]
+    except Exception:
+        db_file = ''
+    if not db_file:
+        return LEGACY_INDEX_FILE
+    return Path(db_file).parent / LEGACY_INDEX_FILE.name
+
+
 def migrate_from_json(conn, legacy_path: Path = None) -> None:
     """Migrate a v1 JSON index into the SQLite database.
 
@@ -264,7 +275,10 @@ def migrate_from_json(conn, legacy_path: Path = None) -> None:
         return
 
     if legacy_path is None:
-        legacy_path = LEGACY_INDEX_FILE
+        # R03: the v1 index is migrated only from the directory of the store
+        # actually in use. With RECALL_DB (or an explicit db_path) pointing
+        # elsewhere, the default-home index.json is neither read nor renamed.
+        legacy_path = _legacy_index_for(conn)
 
     _migration_checked = True
 
@@ -560,6 +574,20 @@ def index_transcript(conn, session_id: str, transcript_path: str,
         window = get_exchanges(conn, session_id, last_n=AUTO_TAG_WINDOW)
         _store_auto_tags(conn, session_id, window, commit=False)
         auto_detect_highlights(conn, session_id, new_exchanges_list, commit=False)
+
+    # Durable blocks have an independent scan cursor so installing this version
+    # can backfill old source text without duplicating legacy exchanges. A
+    # savepoint keeps a damaged source from rolling back the legacy capture.
+    if transcript_path and os.path.isfile(transcript_path):
+        conn.execute('SAVEPOINT durable_capture')
+        try:
+            from memory_store import index_file
+            index_file(conn, transcript_path, session_id=session_id, cwd=project_path)
+            conn.execute('RELEASE durable_capture')
+        except Exception as exc:
+            conn.execute('ROLLBACK TO durable_capture')
+            conn.execute('RELEASE durable_capture')
+            print(f'[recall] Durable capture failed: {exc}', file=sys.stderr)
 
     return new_exchanges_list
 
