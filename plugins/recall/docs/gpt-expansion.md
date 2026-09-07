@@ -84,3 +84,11 @@ Recall itself makes no network requests. Retrieved evidence goes to the calling 
 ChatGPT web access and ChatGPT export ingestion remain separate decisions (P59). The present implementation opens no HTTP port and does not imply access to account chat history. Additional transcript formats are also separate from allowing another client to read existing Claude/Codex evidence. P58/P60–P62 track the active implementation, host checks and cross-agent handoffs; the original activation, human-evaluation and publication gates remain.
 
 When task cwd is a parent folder such as Documents, the installed Codex skill uses the actual target repository with CLI `--cwd` and checks returned coverage. MCP scope remains fixed at launch. New capture excludes Claude `isMeta` bodies and labels Claude compaction summaries `host`; get/search may return those summaries, while brief/recovery never select them. Older sources require an explicit rebuild for reclassification.
+
+## September 6 implementation update
+
+The [selected export importer](history-import.md) now supports a narrowly validated
+ChatGPT mapping/current_node contract and explicit visible-chat snapshots. Provider
+fixtures pass; a real account export remains necessary to certify its exact format.
+The current-branch and exclusion policy is explicit. No account API access, remote
+listener, implicit uploads or automatically captured web conversations are claimed.

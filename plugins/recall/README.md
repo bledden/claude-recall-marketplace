@@ -387,7 +387,8 @@ MCP `recall_get` accepts the same `quote` and `expected_hash` inputs. Only cite
 `citation_check.quote_start`/`quote_end` when `valid` is true. Offsets count Unicode
 characters in retained, redacted text. The checker verifies a substring in that
 returned window and an optional prior hash; it does not establish the truth of a
-claim, successful command execution, or immutable historical revisions. An edit
+claim or successful command execution. Retained revisions preserve earlier redacted
+text under an explicit retention policy. An edit
 can invalidate the hash even if the quoted words survive. Re-read and correct a
 failed citation. User/assistant roles may contain pasted reports; a tool request
 records intent, while this store excludes tool output. Different agents or wording
@@ -756,7 +757,7 @@ For a desktop task opened in a parent folder, pass the actual working repository
 
 Claude host-rendered skill/command bodies (`isMeta`) are excluded by new durable capture. Claude compaction summaries (`isCompactSummary`) are searchable under role `host`; brief and compaction recovery select only user/assistant prose. Codex compaction summaries remain excluded. Existing sources need an explicit rebuild to apply these classifications; legacy capped exchanges still retain host prompts.
 
-`/recall status` and `/recall doctor` show capture time, backlog, why records were skipped (`excluded_by_policy`, `metadata_records`, `unsupported` with the record types, `malformed`), missing/changed sources, database checks, and one concrete next action per source. `sources --offset N` continues a source listing. A changed source is never overwritten silently: `index PATH --agent AGENT --rebuild` starts a new generation and rescans from byte 0. Messages the rescan has not reached keep their old text until the rescan reaches end of file, when anything the file no longer contains is deleted; a message whose id is unchanged but whose text changed is replaced at the moment the rescan reaches it. An interrupted rebuild resumes on the next index pass, also after a transient source-changed state, and `rescope AGENT:SESSION --cwd DIR` pins a corrected repository scope against later passes (`--auto` unpins). During a rebuild, results can mix old and new content; a block id resolves to its latest indexed text, not to an immutable snapshot.
+`/recall status` and `/recall doctor` show capture time, backlog, why records were skipped (`excluded_by_policy`, `metadata_records`, `unsupported` with the record types, `malformed`), missing/changed sources, database checks, and one concrete next action per source. `sources --offset N` continues a source listing. A changed source is never overwritten silently: `index PATH --agent AGENT --rebuild` starts a new generation and rescans from byte 0. The complete published blocks, search index and brief remain readable while the replacement is staged. At verified EOF, an explicit index pass publishes the replacement in one transaction; hooks stage and report `rebuild_ready`, leaving final publication to maintenance. Repeat `index PATH --agent AGENT` without `--rebuild` to finish. Changed or removed blocks become retained revisions. `rescope` waits for rebuild completion. See [revision retention and recovery](docs/revision-evidence-design.md).
 
 After a compaction, the session-start hook re-anchors Claude with verbatim excerpts from the durable store (opening ask + tails of the last three text blocks, each cited with `get <block_id> --start N`, ≤ 3,500 chars, never repeated for an unchanged state).
 
@@ -780,3 +781,19 @@ work around it. Current MCP readers use lexical retrieval; the semantic opt-in
 above is a CLI capability and does not activate embeddings in those readers.
 
 All new operations are available directly through `python3 scripts/recall_memory.py --help`; `--db PATH` before the operation selects an isolated store. See `docs/durable-memory.md` for rollout and validation.
+
+### Retained citations and explicit app-history imports
+
+A saved `(block_id, content_hash)` can now be read with `get ID --revision HASH`.
+Three superseded unpinned versions are retained per block; explicitly pin a saved
+citation before it expires. Source prune removes its revisions as well.
+[Full revision contract](docs/revision-evidence-design.md).
+
+`history-preview FILE` lists conversation IDs in supported Claude/ChatGPT JSON
+exports (including selected JSON members of a ZIP) or an explicit visible-chat
+snapshot. `history-import FILE --provider PROVIDER --conversation ID --cwd DIR`
+imports one selected conversation. These offline, text-only adapters reject unknown
+shapes, skip attachments/reasoning/tool results, and select ChatGPT's current branch.
+Provider-format fixtures pass; a real account export has not yet been supplied.
+The visible-snapshot format is a supported explicit fallback, not automatic capture
+or an account-wide history guarantee. [Import workflow and limits](docs/history-import.md).

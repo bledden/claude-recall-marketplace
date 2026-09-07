@@ -70,7 +70,7 @@ Model files are fingerprinted; a changed model refuses retrieval until rebuilt. 
 | Full retained source text; head/tail concern | Implemented; exact retrieval and bounded head/tail brief excerpts; compaction recovery quotes tails |
 | Claude/Codex import, repository identity, provenance | Implemented; explicit Codex import |
 | Briefing and capture diagnostics | Implemented; historical evidence separated from live Git |
-| Retrieval evaluation | 60-question real-history anchor probe; human answer-quality evaluation remains future work |
+| Retrieval evaluation | 60-question real-history anchor probe; human answer-quality labels remain with the maintainer; fresh synthetic Claude/Codex behavioral checks are recorded separately |
 | Embeddings | One offline backend implemented and tested; kept opt-in |
 | Installed local plugin update | v2.4.0 installed (cache 2.4.0); active session reload pending the user's window (P22); 2.5.0 install pending P20/P23 |
 | Blog npm vulnerabilities | Separate dependency branch updates Astro/MDX/sharp/integrations and CI Node; clean install/build and zero-vulnerability audit |
@@ -81,3 +81,6 @@ Validation covers migration with existing v5 rows, complete long-answer paginati
 Final local validation of the first revision: 481 tests passed (`python3 -m pytest -q`), and `claude plugin validate` passed. After the update-window changes: 521 tests; see the plan for per-item evidence. The blog branch passed `npm ci`, `npm run build` (13 pages), and a live `npm audit` with zero reported vulnerabilities.
 
 The real-trace smoke run retained 1,540 Claude blocks and 79 Codex blocks, verified exact paginated retrieval, selected eight briefing references, matched the main checkout's repository identity to its worktree, and passed both SQLite and external-content FTS integrity checks. These counts describe that snapshot, not all available histories.
+
+Schema 10 adds [retained revisions and atomic rebuilds](revision-evidence-design.md).
+[Explicit conversation imports](history-import.md) supplement local transcript capture.

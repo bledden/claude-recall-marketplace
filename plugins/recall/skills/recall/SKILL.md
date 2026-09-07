@@ -62,7 +62,7 @@ These commands take precedence over the legacy menu and mappings below:
 - `/recall get <block_id> [--start N] [--neighbors N]` → the `get` operation above.
 - `/recall brief [--since YYYY-MM-DD]` → `brief --live-git` with the optional date.
 - `/recall status`, `/recall doctor`, `/recall sources` → the corresponding operation; source lists paginate with `--offset`.
-- `/recall index <path> --agent claude|codex` → `index` with the explicit path and agent. Claude directory imports select top-level main transcripts; add `--recursive` for nested/subagent history. Codex date directories are always traversed. On `path_conflict`, inspect the offered and registered paths; evidence was not replaced. Repeat if its time budget is exhausted. Use `--rebuild` only when replacement of an indexed source is requested. During a rebuild, results can mix old and new content; a block id resolves to its latest indexed text.
+- `/recall index <path> --agent claude|codex` → `index` with the explicit path and agent. Claude directory imports select top-level main transcripts; add `--recursive` for nested/subagent history. Codex date directories are always traversed. On `path_conflict`, inspect the offered and registered paths; evidence was not replaced. Repeat if its time budget is exhausted. Use `--rebuild` only when replacement of an indexed source is requested. A rebuild stages a replacement; readers keep the complete published history until explicit index finishes publication. Hooks can report rebuild_ready. A bare block ID reads published current text; `get ID --revision HASH` recovers retained older text or fails explicitly.
 - `/recall semantic-build --model-path <directory>` → the matching operation, only on explicit request. The directory must already contain a local sentence-transformers model.
 
 **Default recovery path (P05):** `/recall find <question>` runs the durable `search` scoped to this repository; `/recall search <keywords>` runs it scoped to this session, `--all` widens to this repository and `--global` to every repository (the same scope words the legacy commands use). Read the `coverage` object in the result: if `source_count` is 0 for the scope, or the user asked for `--tag NAME` or `--project NAME` (legacy-only scoping), run the legacy `fetch_exchanges.py search` mapping in Step 1 instead and say which store answered. `/recall search --legacy <keywords>` forces the legacy store. `lastN` and `around <time>` are session-navigation commands over the legacy rows and stay as they are. A long answer is always finished with `get <block_id> --start <next_start>` until `next_start` is null, never by trusting a truncated excerpt.
@@ -177,3 +177,16 @@ If `$ARGUMENTS` was provided, skip the menu and fetch directly:
 Run the appropriate script based on `$ARGUMENTS` as described in Step 1.
 
 Then summarize the fetched content and continue with the task; ask only when the recovered context is genuinely ambiguous.
+
+### Saved citations and app exports
+
+Use `get ID --revision HASH` for an earlier content_hash. `revisions ID` lists retained
+history; `pin-revision ID HASH` explicitly keeps a version beyond the default three
+unpinned superseded versions. Pins do not survive source prune. See
+[revision behavior](../../docs/revision-evidence-design.md).
+
+For an explicitly supplied Claude/ChatGPT export or visible-chat snapshot,
+`history-preview FILE` lists conversation ids without opening the store.
+`history-import FILE --provider PROVIDER --conversation ID --cwd DIR` imports only
+the selected conversation into the named project. This is an explicit snapshot,
+not live account capture. See [formats and limits](../../docs/history-import.md).

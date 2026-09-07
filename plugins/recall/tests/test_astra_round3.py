@@ -141,17 +141,17 @@ def test_rebuild_renumbers_across_capped_passes_and_repeated_message_ids(store):
     assert any('memory_blocks_message (source_key=? AND message_key=?)' in r[3] for r in plan)
 
 
-def test_p38_mixed_view_converges_and_removes_stale_chunks_and_vectors(store):
+def test_p52_atomic_view_removes_stale_chunks_and_vectors_only_at_publication(store):
     conn, tmp, path = store
     conn.execute("INSERT INTO memory_vectors(chunk_id,model,vector) SELECT id,'model',x'0000803f' FROM memory_chunks")
     conn.commit()
-    # Old unvisited b remains temporarily; new a replaces old a immediately.
+    # Published a and b, including their vectors, remain until atomic publication.
     trace(path, [record('replacement sentinel evidence', 'a', 'user'), record('new last evidence', 'c')])
     result = memory.index_file(conn, path, session_id='round3', cwd=str(tmp), rebuild=True, max_records=1)
     assert result['state'] == 'rebuilding'
-    assert not memory.search(conn, 'irreplaceable')
-    assert memory.search(conn, 'replacement') and memory.search(conn, 'second')
-    assert conn.execute('SELECT count(*) FROM memory_vectors').fetchone()[0] == 1
+    assert memory.search(conn, 'irreplaceable')
+    assert not memory.search(conn, 'replacement') and memory.search(conn, 'second')
+    assert conn.execute('SELECT count(*) FROM memory_vectors').fetchone()[0] == 2
     result = memory.index_file(conn, path, session_id='round3', cwd=str(tmp))
     assert result['state'] == 'complete' and result['stale_removed'] == 1
     assert not memory.search(conn, 'second')

@@ -50,7 +50,7 @@ python3 /path/to/recall/scripts/prepare_claude_app.py \
 Python 3.9+ with SQLite FTS5 is required. The preparer records the absolute Python
 executable; `--python /absolute/path/to/python3` selects another installed runtime.
 It checks that the store has sources in the selected scope, freezes that scope
-into the launch arguments, copies the five stdlib reader modules, and emits:
+into the launch arguments, copies the six stdlib reader modules, and emits:
 
 - `desktop-config-snippet.json`, for Desktop chat;
 - `recall-reader.zip`, with `.mcp.json`, a retrieval-only skill and the manifest
@@ -150,3 +150,7 @@ VM store and falsely appear to share host memory.
 P67–P70 in the update-window plan track the prepared integration, live app gates,
 capture boundaries and cloud-mode follow-through. None of these checks authorizes
 publication or counts as P10's human retrieval evaluation.
+
+For conversations lacking an accessible local transcript, use the explicit
+[visible-message snapshot or selected export import](history-import.md). This
+requires deliberate capture and does not turn the read-only connector into a writer.

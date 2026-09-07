@@ -90,6 +90,8 @@ def initialize(conn):
     # both index seeks with this.
     conn.execute('CREATE INDEX IF NOT EXISTS memory_blocks_generation ON memory_blocks(source_key, generation, seq)')
     migrate_vectors_to_blob(conn)
+    import memory_revisions
+    memory_revisions.initialize(conn)
 
 
 def migrate_vectors_to_blob(conn):
@@ -187,6 +189,9 @@ def verify_schema(conn):
             problems.append('foreign_key_check reports orphan rows')
     except sqlite3.Error as exc:
         problems.append('foreign_key_check failed: ' + str(exc))
+    if not problems:
+        import memory_revisions
+        problems.extend(memory_revisions.verify_content(conn))
     return problems
 
 
@@ -341,31 +346,36 @@ def normalize_record(entry, agent):
                 block.get('input', {}), ensure_ascii=False, sort_keys=True, default=str), ordinal
 
 
-def _store_block(conn, source_key, key, seq, role, kind, timestamp, text, ordinal, start, end, generation=0):
-    # Elide binary data before redaction; preserve all remaining redacted text.
+def _store_block(conn, source_key, key, seq, role, kind, timestamp, text, ordinal, start, end, generation=0, staging=False):
     text = re.sub(r'data:[^\s,]*;base64,[A-Za-z0-9+/=]+', '[ELIDED:base64]', text)
     text = redact_secrets(text)
     block_id = digest(f'{source_key}:{key}:{ordinal}:{kind}')[:32]
-    content_hash = digest(text)
-    existing = conn.execute('SELECT content_hash FROM memory_blocks WHERE id=?', (block_id,)).fetchone()
-    if existing and existing[0] == content_hash:
-        # Unchanged: mark it as seen by the current (re)build generation and give
-        # it its position in the current scan (R08: a rebuild renumbers).
-        conn.execute('UPDATE memory_blocks SET generation=?,start_byte=?,end_byte=?,seq=?,role=?,timestamp=? WHERE id=?',
-                     (generation, start, end, seq, role, timestamp, block_id))
-        return 0
-    if existing:
-        conn.execute('DELETE FROM memory_chunks WHERE block_id=?', (block_id,))
-    conn.execute('''INSERT INTO memory_blocks(id,source_key,message_key,seq,role,kind,timestamp,text,start_byte,end_byte,content_hash,ordinal,generation)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON CONFLICT(id) DO UPDATE SET text=excluded.text,content_hash=excluded.content_hash,
-        start_byte=excluded.start_byte,end_byte=excluded.end_byte,ordinal=excluded.ordinal,generation=excluded.generation,
-        seq=excluded.seq,role=excluded.role,timestamp=excluded.timestamp''',
-        (block_id, source_key, key, seq, role, kind, timestamp, text, start, end, content_hash, ordinal, generation))
-    for i, (a, b, passage) in enumerate(split_passages(text)):
-        conn.execute('INSERT INTO memory_chunks(block_id,ordinal,start_char,end_char,text) VALUES(?,?,?,?,?)',
-                     (block_id, i, a, b, passage))
-    return 1
+    row = dict(id=block_id,source_key=source_key,message_key=key,seq=seq,role=role,kind=kind,
+               timestamp=timestamp,text=text,start_byte=start,end_byte=end,content_hash=digest(text),
+               ordinal=ordinal,generation=generation)
+    return _put_block(conn,row,staging)
+
+
+def _put_block(conn, row, staging=False):
+    from memory_revisions import FIELDS, COLUMNS, remember
+    table = 'memory_rebuild_blocks' if staging else 'memory_blocks'
+    existing=conn.execute('SELECT * FROM '+table+' WHERE id=?',(row['id'],)).fetchone()
+    unchanged=existing is not None and existing['content_hash']==row['content_hash']
+    if not staging and existing and not unchanged:
+        remember(conn,existing)
+        conn.execute('DELETE FROM memory_chunks WHERE block_id=?',(row['id'],))
+    if unchanged:
+        conn.execute('UPDATE '+table+' SET generation=?,start_byte=?,end_byte=?,seq=?,role=?,timestamp=? WHERE id=?',
+                     (row['generation'],row['start_byte'],row['end_byte'],row['seq'],row['role'],row['timestamp'],row['id']))
+    else:
+        conn.execute('INSERT INTO '+table+' ('+COLUMNS+') VALUES ('+','.join('?' for _ in FIELDS)+') '
+                     'ON CONFLICT(id) DO UPDATE SET '+','.join(k+'=excluded.'+k for k in FIELDS if k not in ('id','source_key','message_key')),
+                     tuple(row[k] for k in FIELDS))
+    if not staging and not unchanged:
+        for i,(a,b,passage) in enumerate(split_passages(row['text'])):
+            conn.execute('INSERT INTO memory_chunks(block_id,ordinal,start_char,end_char,text) VALUES(?,?,?,?,?)',
+                         (row['id'],i,a,b,passage))
+    return int(not unchanged)
 
 
 def transcript_paths(root, agent='claude', recursive=False):
@@ -433,21 +443,16 @@ def trace_metadata(path, agent, session_id='', cwd=''):
 
 
 def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*1024*1024,
-               max_records=1000, rebuild=False):
+               max_records=1000, rebuild=False, publish_rebuild=True):
     """One committed-by-caller scan; reruns upsert stable identities, never duplicate.
 
     Each source has its own cursor. Missing/changed sources preserve stored blocks.
 
-    Rebuild semantics: ``rebuild=True`` starts a new *generation* and rescans
-    from byte 0. Every block the rescan touches is stamped with the generation;
-    a message whose id is unchanged but whose text changed is replaced at the
-    moment the rescan reaches it (the file is the truth), while messages the
-    rescan has not reached keep their old text until end of file, when every
-    block of an earlier generation is deleted in the same transaction that marks
-    the source complete. "A rebuild is in progress" is derived from the data
-    (blocks older than the source generation exist), so an interrupted rebuild
-    resumes on any later ``index_file`` call, including after a transient
-    ``source_changed`` state.
+    Rebuilds stage a complete replacement outside the published block/FTS tables.
+    Only a verified EOF prefix is published, atomically, by an explicit index pass.
+    Hooks pass publish_rebuild=False and expose rebuild_ready for maintenance.
+    Superseded text is retained by the revision policy; normal append capture keeps
+    publishing completed passes. Each read connection pins a SQLite snapshot.
 
     Edit detection: the 256 bytes before the saved cursor (append continuity)
     and the first 256 bytes of the file (header) are hashed; a mismatch or a
@@ -486,15 +491,25 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
     generation = previous['generation'] or 0
     if rebuild:
         generation += 1
-        rebuilding = True
+        from memory_revisions import published_source
+        base = published_source(previous)
+        target = dict(path=path,project_path=cwd,repo_id=repo)
+        conn.execute('DELETE FROM memory_rebuild_blocks WHERE source_key=?',(source_key,))
+        conn.execute('DELETE FROM memory_rebuild_segments WHERE source_key=?',(source_key,))
         conn.execute("UPDATE memory_sources SET byte_offset=0,omitted=0,malformed=0,tail_size=0,excluded=0,"
-                     "metadata_records=0,unsupported_types='[]',generation=?,state='rebuilding',head_hash=NULL "
-                     "WHERE source_key=?", (generation, source_key))
+                     "metadata_records=0,unsupported_types='[]',generation=?,state='rebuilding',head_hash=NULL,"
+                     "rebuild_in_progress=1,rebuild_target=?,rebuild_base=? WHERE source_key=?",
+                     (generation,json.dumps(target),json.dumps(base),source_key))
         offset = 0
-    # R06: "a rebuild is in progress" == "blocks older than the source generation exist".
-    # Derived from the data so a transient source_changed/backlog state cannot lose it.
-    rebuilding = conn.execute('SELECT 1 FROM memory_blocks WHERE source_key=? AND generation<? LIMIT 1',
-                              (source_key, generation)).fetchone() is not None
+    previous = conn.execute('SELECT * FROM memory_sources WHERE source_key=?',(source_key,)).fetchone()
+    rebuilding = bool(previous['rebuild_in_progress'])
+    if rebuilding:
+        target=json.loads(previous['rebuild_target'])
+        cwd,repo=target['project_path'],target['repo_id']
+    if rebuilding and not rebuild and previous['state']=='source_changed' and (previous['error'] or '').startswith('Rebuild '):
+        return {'source':source_key,'blocks':0,'offset':offset,'state':'source_changed','changed':previous['error']}
+    block_table='memory_rebuild_blocks' if rebuilding else 'memory_blocks'
+    message_index='memory_rebuild_message' if rebuilding else 'memory_blocks_message'
     changed = None
     if size < offset:
         changed = 'file shrank below the saved cursor'
@@ -515,8 +530,9 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
     count = omitted = malformed = excluded = metadata = 0
     unsupported_types = set() if rebuild else set(json.loads(previous['unsupported_types'] or '[]'))
     state = 'complete'
-    seq = conn.execute('SELECT COALESCE(MAX(seq),0) FROM memory_blocks WHERE source_key=? AND generation=?',
+    seq = conn.execute('SELECT COALESCE(MAX(seq),0) FROM '+block_table+' WHERE source_key=? AND generation=?',
                        (source_key, generation)).fetchone()[0]
+    segment_hash=hashlib.sha256()
     with open(path, 'rb') as file:
         file.seek(offset)
         for record_number in range(max_records):
@@ -531,6 +547,7 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
                 state = 'backlog'
                 break
             offset = file.tell()
+            segment_hash.update(raw)
             try:
                 entry = json.loads(raw)
             except (ValueError, UnicodeDecodeError):
@@ -548,7 +565,7 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
             # generation per message (the P33 regression, re-introduced by R08's
             # generation check). The message index is always the right one here.
             record_seq = None
-            for row in conn.execute('SELECT seq, generation FROM memory_blocks INDEXED BY memory_blocks_message '
+            for row in conn.execute('SELECT seq, generation FROM '+block_table+' INDEXED BY '+message_index+' '
                                     'WHERE source_key=? AND message_key=?', (source_key, key)):
                 if row[1] == generation:
                     record_seq = row[0]
@@ -573,7 +590,7 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
             for role, kind, text, ordinal in blocks:
                 count += _store_block(conn, source_key, key, record_seq, role, kind,
                                       str(entry.get('timestamp') or ''), text, ordinal, start, offset,
-                                      generation=generation)
+                                      generation=generation, staging=rebuilding)
             if blocks:
                 seq = max(seq, record_seq)
         else:
@@ -589,12 +606,20 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
         state = 'complete'
     stale = 0
     if rebuilding:
-        if state == 'complete':
-            # The rescan reached EOF: everything it did not touch is gone from the file.
-            stale = conn.execute('DELETE FROM memory_blocks WHERE source_key=? AND generation<?',
-                                 (source_key, generation)).rowcount
+        if offset>original:
+            conn.execute('INSERT INTO memory_rebuild_segments VALUES(?,?,?,?)',
+                         (source_key,original,offset,segment_hash.hexdigest()))
+        if state == 'complete' and publish_rebuild:
+            import memory_revisions
+            try:
+                stale=memory_revisions.publish(conn,source_key,path,offset,_put_block)
+            except ValueError as exc:
+                conn.execute("UPDATE memory_sources SET state='source_changed',error=? WHERE source_key=?",(str(exc),source_key))
+                return {'source':source_key,'blocks':count,'offset':offset,'state':'source_changed','changed':str(exc)}
         else:
-            state = 'rebuilding'   # keep old evidence until the rescan finishes
+            state='rebuild_ready' if state=='complete' else 'rebuilding'
+            # Published source identity changes only with the replacement.
+            cwd,repo=previous['project_path'],previous['repo_id']
     now = datetime.now(timezone.utc).isoformat()
     conn.execute('''UPDATE memory_sources SET path=?,project_path=?,repo_id=?,byte_offset=?,source_size=?,
         last_indexed_at=?,state=?,error=NULL,omitted=omitted+?,malformed=malformed+?,tail_hash=?,tail_size=?,
@@ -669,12 +694,19 @@ def evidence_provenance(role, kind):
     return role + '_record: may contain pasted reports; role alone does not establish authorship or truth'
 
 
-def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0, quote=None, expected_hash=None):
+def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0, quote=None, expected_hash=None, revision=None):
     if start < 0 or max_chars < 1 or neighbors < 0:
         raise ValueError('start/neighbors must be nonnegative and max_chars positive')
-    row = conn.execute('''SELECT b.*,s.agent,s.session_id,s.repo_id,s.project_path
-                          FROM memory_blocks b JOIN memory_sources s ON s.source_key=b.source_key
-                          WHERE b.id=?''', (block_id,)).fetchone()
+    if revision is not None:
+        import memory_revisions
+        saved=memory_revisions.revision(conn,block_id,revision)
+        if saved is None:
+            raise ValueError('Revision unavailable: expired, pruned, or never retained')
+        source=conn.execute('SELECT agent,session_id,repo_id,project_path FROM memory_sources WHERE source_key=?',(saved['source_key'],)).fetchone()
+        row={**dict(saved),**dict(source)}
+    else:
+        row = conn.execute('SELECT b.*,s.agent,s.session_id,s.repo_id,s.project_path FROM memory_blocks b '
+                           'JOIN memory_sources s ON s.source_key=b.source_key WHERE b.id=?',(block_id,)).fetchone()
     if row is None:
         raise ValueError('Unknown block: '+block_id)
     result = dict(row)
@@ -684,6 +716,8 @@ def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0, quote=None, 
     end = min(len(full), start+max_chars)
     result.update(text=full[start:end],start_char=start,end_char=end,total_chars=len(full),
                   next_start=end if end<len(full) else None)
+    result['revision'] = row['content_hash']
+    result['revision_requested'] = revision is not None
     result['provenance'] = evidence_provenance(row['role'], row['kind'])
     if quote is not None or expected_hash is not None:
         if quote is not None and (not isinstance(quote, str) or not quote):
@@ -696,10 +730,10 @@ def get_block(conn, block_id, start=0, max_chars=8000, neighbors=0, quote=None, 
             'quote_matches': matched if quote is not None else None,
             'quote_start': start+at if quote is not None and at >= 0 else None,
             'quote_end': start+at+len(quote) if quote is not None and at >= 0 else None,
-            'scope': 'Exact text in this returned window and optional content hash only; not claim correctness, authorship, execution success or immutable storage.'}
+            'scope': 'Exact text in this returned window and optional content hash only; not claim correctness, authorship or execution success. Retention can expire unpinned revisions.'}
     result['neighbors'] = [dict(r) for r in conn.execute('''SELECT id,seq,role,kind,timestamp,substr(text,1,240) AS preview
         FROM memory_blocks WHERE source_key=? AND seq BETWEEN ? AND ? AND id<>? ORDER BY seq,ordinal,id''',
-        (row['source_key'],row['seq']-neighbors,row['seq']+neighbors,block_id))] if neighbors else []
+        (row['source_key'],row['seq']-neighbors,row['seq']+neighbors,block_id))] if neighbors and revision is None else []
     return result
 
 
@@ -808,8 +842,9 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
     output=[]
     for raw in rows:
         row=dict(raw)
+        row.pop('rebuild_target',None); row.pop('rebuild_base',None)
         try:
-            actual=os.path.getsize(row['path'])
+            actual=row['byte_offset'] if row['state']=='imported_snapshot' else os.path.getsize(row['path'])
             row['backlog_bytes']=max(0,actual-row['byte_offset'])
             if actual<row['byte_offset']:
                 row['state']='source_changed'
@@ -873,11 +908,13 @@ def next_action(row):
     """One actionable instruction per source state (P08)."""
     key, state = row['source_key'], row['state']
     agent = row['agent']
+    if state == 'imported_snapshot':
+        return 'Explicit text snapshot; live freshness is unknown. Repeat history-import with a new export to refresh. No automatic account capture.'
     if state == 'source_missing':
         return 'Original transcript is gone; retained blocks stay readable. Nothing to do, or `prune %s` to drop them.' % key
     if state == 'source_changed':
         return 'Content before the saved cursor changed. Re-run `index %s --agent %s --rebuild` to replace this source.' % (row['path'], agent)
-    if state == 'rebuilding':
+    if state in ('rebuilding','rebuild_ready'):
         return 'Rebuild in progress; earlier evidence stays searchable. Run `index %s --agent %s` (no --rebuild) to finish it.' % (row['path'], agent)
     if state == 'partial_record':
         return 'The writer is mid-record. Retry `index %s --agent %s` after the session writes more.' % (row['path'], agent)

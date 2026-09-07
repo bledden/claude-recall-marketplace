@@ -1,7 +1,7 @@
 {
   "name": "recall",
   "version": "2.5.0",
-  "description": "Cross-session, cross-project conversation recall: verbatim exchanges and the commands Claude ran, ranked search with match snippets, secrets redacted at index time, compaction recovery, highlight sharing, and a skill Claude invokes on its own",
+  "description": "Local cross-session evidence recovery: retained redacted conversation text and tool requests, ranked search, verified citations, compaction recovery, and skills for coding agents",
   "author": {
     "name": "bledden",
     "url": "https://github.com/bledden"
@@ -9,5 +9,12 @@
   "homepage": "https://github.com/bledden/claude-recall-plugin",
   "repository": "https://github.com/bledden/claude-recall-plugin",
   "license": "MIT",
-  "keywords": ["recall", "context", "memory", "search", "session", "productivity"]
+  "keywords": [
+    "recall",
+    "context",
+    "memory",
+    "search",
+    "session",
+    "productivity"
+  ]
 }

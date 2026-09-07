@@ -38,13 +38,14 @@ SPECS = {
         'query': field('string', minLength=1, maxLength=2000), 'source': SOURCE,
         'limit': field('integer', minimum=1, maximum=10, default=5),
         'kind': field('string', enum=['text', 'tool_use', 'all'], default='text')}, ['query']),
-    'recall_get': ('Read a cited block in full, following next_start for long evidence. Offsets count Unicode characters; IDs resolve to the latest indexed text.', {
+    'recall_get': ('Read a cited block in full, following next_start for long evidence. Offsets count Unicode characters; Bare IDs read published current text; revision selects retained older text.', {
         'block_id': field('string', minLength=1, maxLength=64),
         'start': field('integer', minimum=0, maximum=2**31-1, default=0),
         'max_chars': field('integer', minimum=1, maximum=8000, default=8000),
         'neighbors': field('integer', minimum=0, maximum=2, default=1),
         'quote': field('string', minLength=1, maxLength=8000, description='Exact quotation to check within the returned window; use citation_check offsets only when valid.'),
-        'expected_hash': field('string', minLength=64, maxLength=64, description='Optional content_hash from an earlier result; detects edited evidence without promising immutable revisions.')}, ['block_id']),
+        'revision': field('string', minLength=64, maxLength=64, description='Read this exact retained content hash, including a superseded or deleted block; unavailable revisions fail explicitly.'),
+        'expected_hash': field('string', minLength=64, maxLength=64, description='Check that the returned revision matches an earlier content_hash; use revision to recover retained older text.')}, ['block_id']),
     'recall_brief': ('Catch up using sampled historical evidence with exact offsets. This is not a complete summary or live repository inspection.', {
         'source': SOURCE, 'limit': field('integer', minimum=1, maximum=8, default=8)}, []),
     'recall_status': ('Check indexed source coverage, import backlog and freshness in this repository. Does not scan for or import new histories.', {
@@ -75,7 +76,7 @@ def validate_arguments(name, args):
         value = args.get(key, spec.get('default'))
         if spec['type'] == 'integer':
             if type(value) is not int or not spec['minimum'] <= value <= spec['maximum']:
-                raise ValueError('Invalid integer argument: ' + key)
+                raise ValueError(f'Invalid integer argument: {key}; expected {spec["minimum"]}..{spec["maximum"]}')
         else:
             if not isinstance(value, str) or not spec.get('minLength', 0) <= len(value) <= spec.get('maxLength', 2000):
                 raise ValueError('Invalid string argument: ' + key)
@@ -130,11 +131,16 @@ class RecallService:
                 raise ValueError('Unknown source in this repository')
             if name == 'recall_get':
                 # Unknown and unauthorized IDs deliberately produce the same response.
-                if not conn.execute('''SELECT 1 FROM memory_blocks b JOIN memory_sources s ON s.source_key=b.source_key
-                                       WHERE b.id=? AND s.repo_id=?''', (args['block_id'], self.repo_id)).fetchone():
-                    raise ValueError('Unknown block in this repository')
+                if args.get('revision'):
+                    scope_sql='SELECT source_key FROM memory_blocks WHERE id=? AND content_hash=? UNION SELECT source_key FROM memory_revisions WHERE id=? AND content_hash=?'
+                    scope_args=(args['block_id'],args['revision'],args['block_id'],args['revision'])
+                else:
+                    scope_sql='SELECT source_key FROM memory_blocks WHERE id=?'
+                    scope_args=(args['block_id'],)
+                if not conn.execute('SELECT 1 FROM ('+scope_sql+') b JOIN memory_sources s ON s.source_key=b.source_key WHERE s.repo_id=?',scope_args+(self.repo_id,)).fetchone():
+                    raise ValueError('Unknown block in this repository or requested revision unavailable')
                 result = memory.get_block(conn, args['block_id'], args['start'], args['max_chars'], args['neighbors'],
-                                          args.get('quote'), args.get('expected_hash'))
+                                          args.get('quote'), args.get('expected_hash'), args.get('revision'))
                 result['neighbors_truncated'] = len(result['neighbors']) > 12
                 result['neighbors'] = result['neighbors'][:12]
             elif name == 'recall_search':

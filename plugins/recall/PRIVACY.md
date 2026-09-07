@@ -133,3 +133,20 @@ quotation log or network call. As with all reader results, quotes sent through a
 host agent may enter that host's model context. `recall_capture.py --cwd PROJECT`
 explicitly maps selected local transcripts to a host repository and pins the
 scope; it refuses to move an already registered foreign source implicitly.
+
+## Superseded text and explicit history imports
+
+Schema 10 retains up to three superseded unpinned redacted text versions per block.
+Pins explicitly retain additional versions; `revision-gc --keep N` changes the
+limit and removes excess unpinned rows. Source prune cascades through current,
+staged and historical rows. Backups include history; portable export includes it
+only with `--include-revisions`. SQLite deletion does not erase originals, existing
+backups, free pages or storage remnants. No automatic vacuum or secure-erasure claim.
+
+History preview/import reads only the explicitly supplied local file. ZIP handling
+reads bounded conversation JSON members without extracting any files. Preview
+prints conversation titles/IDs and counts, not message bodies. Import requires one
+conversation ID and repository directory, retains supported visible text and applies
+the normal redaction policy. New redaction rules can change imported hashes.
+Snapshots do not prove authorship or completeness, and no account request, network
+fetch, upload, credential access, background capture or telemetry is added.

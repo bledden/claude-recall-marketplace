@@ -31,7 +31,7 @@ def test_interrupted_rebuild_keeps_old_evidence_until_complete(store):
     assert m.index_file(c,p,session_id='s',cwd=str(tmp))['state']=='source_changed'
     r=m.index_file(c,p,session_id='s',cwd=str(tmp),rebuild=True,max_records=1); c.commit()
     assert r['state']=='rebuilding' and r['stale_removed']==0
-    assert m.search(c,'original') and m.search(c,'new')          # both generations visible mid-rebuild
+    assert m.search(c,'original') and not m.search(c,'new')      # published generation remains complete
     assert 'Rebuild in progress' in m.status(c)['sources'][0]['next_action']
     while r['state']=='rebuilding':
         r=m.index_file(c,p,session_id='s',cwd=str(tmp),max_records=1); c.commit()

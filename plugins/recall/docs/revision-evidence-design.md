@@ -1,46 +1,73 @@
-# Revision evidence: current contract and future design (P38/P52)
+# Retained revisions and atomic rebuilds (P38/P52, schema 10)
 
-The 2.5 contract is a mutable, local recovery index. A block ID identifies a
-logical source block; an explicit rebuild can replace its text before the source
-reaches EOF. Unvisited old blocks remain until EOF. Readers can therefore observe
-a mixture during rebuild. Search/get/brief now expose content hashes and get can
-verify the prior hash and an exact quote in a returned window. A failed check
-requires a fresh read and corrected citation. This detects a changed citation;
-it does not retain its old contents or provide an immutable audit trail.
+A bare block ID reads published current text. A saved `(block_id, content_hash)`
+selects exact retained redacted text with `get ID --revision HASH` (MCP: `revision`).
+An expired, pruned or never-retained version fails explicitly. `expected_hash`
+checks the returned version; it does not select a version. Quote verification
+still uses Unicode character offsets in the selected text. Compaction excerpts
+include the selected content hash in their get command; they do not automatically
+pin revisions or override the retention policy.
 
-## If immutable saved citations become a requirement
+A rebuild writes candidate blocks and byte-range hashes outside published
+blocks/chunks/FTS/vectors. At EOF, explicit index revalidates every scanned byte
+range and publishes the complete replacement in one transaction. Readers retain
+one SQLite snapshot per operation. Edited and deleted published blocks are archived;
+unchanged passages and vectors survive. Search and brief use only published current
+blocks, never archived text or staged candidates. These atomic guarantees apply to
+the durable block interface; legacy exchange commands keep their separate capture
+behavior. Append capture continues to
+publish completed capped passes. An ordinary append check still detects only
+header/tail edits and shrinkage; it does not detect arbitrary middle-file edits.
 
-Use `(logical_block_id, content_hash)` as a revision identity, with immutable
-redacted text and its own passage rows. Add source generations and an active
-generation pointer. Capture builds a candidate generation; only a complete,
-validated EOF checkpoint promotes it in one transaction. Readers pin the active
-generation for each operation. Incremental appends can publish complete passes,
-while a source replacement must keep its old generation readable until promotion.
+Hooks never perform final rebuild publication: `rebuild_ready` means run the
+explicit `index PATH --agent AGENT` command without `--rebuild`. Final publication
+is maintenance, potentially longer than a hook timeout. Failed publication rolls
+back; earlier published evidence remains. Restart a changed candidate with
+`--rebuild`. Rescope waits for a pending rebuild to finish.
 
-`get --revision HASH` must return that exact retained revision or an explicit
-expired/not-retained result. A bare ID keeps the current-read behavior. Search
-must not mix generations within one response. Source byte cursors, exclusions,
-FTS content and vector fingerprints belong to the candidate generation and are
-promoted together. Compaction uses a pinned generation and cites revisions.
+## Retention and portability
 
-Before implementing, choose a retention limit for superseded revisions, a way to
-pin saved citations, and garbage-collection behavior. Prune must remove all source
-revisions; backups must include generation pointers and pinned revisions. Export
-must say whether it includes current text only or revision history. Never imply
-that SQLite deletion removes originals, backups or SSD remnants.
+- Default: three superseded unpinned versions per logical block. This bounds version
+  count, not total bytes. Large edited blocks and explicit pins consume more storage.
+- `revisions ID` lists retained historical metadata. Current text may not appear in
+  that list; use get for current text. Pinning current text materializes a snapshot.
+- `pin-revision ID HASH` protects a retained version from ordinary cleanup.
+  `--unpin` allows immediate expiry under the current limit.
+- `revision-gc --keep N` sets the global nonnegative count and removes excess
+  unpinned versions. Back up before decreasing it. Pins remain until unpinned/pruned.
+- Source prune removes current, staged and archived rows. Backups include all of
+  them. Export defaults to published current blocks; `--include-revisions` produces
+  v2 with retained history/pins, excluding unpublished candidates.
+- Import validates all identities/hashes before any write and applies the target
+  redaction and retention policies. Re-redaction can change old hashes. Normal
+  portable imports merge; history-import replaces the selected visible snapshot.
 
-Migration would require a new schema version, assigning existing blocks to one
-active generation. Acceptance tests must interrupt every generation transition,
-cover concurrent readers/writers, edited/deleted/duplicate message IDs, old-revision
-pagination, failed EOF/partial JSONL, garbage collection, restore, and both FTS
-indexes. Measure transient disk growth, migration time and capture budgets on
-large transcripts before offering this contract.
+Schema-9 migration preserves available text but cannot recover already-overwritten
+versions. An interrupted old mixed rebuild is marked changed and requires a fresh
+rebuild. Historical text and metadata are immutable via the runtime contract and
+SQLite update trigger; pins/retirement ordering can change. A recurring identical
+text hash selects its first retained metadata snapshot. Source scope remains the
+current explicitly assigned scope. This is local recovery, not an authenticated,
+append-only audit log or a queryable archive of complete past session generations.
+Doctor/restore validate archived identity/hash integrity and never invent evidence.
 
-## Disposition for this update
+## Resource receipt
 
-Design recorded; implementation intentionally excluded from 2.5. The product
-promises inspectable recovery, not immutable auditing. The present defect was a
-wrong quotation and an unsupported claim about a requested patch; exact checking
-and provenance address those without pretending to preserve old revisions. Reopen
-when a concrete saved-citation or atomic-rebuild requirement needs the stronger
-contract. This is an explicit product boundary, not an unfinished 2.5 patch.
+An unchanged rebuild of a copied 333,143,643-byte transcript retained 30,958 blocks.
+163 staged passes took 6.78 seconds, maximum 83 ms; explicit publication took 0.83
+seconds. Peak RSS was 39.4 MB. Database size rose from 95.2 to 139.2 MB while staging;
+freed pages remain reusable after publication. This does not bound changed-history
+storage or every possible publication. `benchmarks/revision_budget.py` reproduces
+the measurement without touching the live store. Existing capture/compaction
+budgets remain separate checks.
+
+## Finishing a large rebuild
+
+The CLI defaults to a ten-second overall index budget. A large rebuild may stop
+in `rebuilding` or `rebuild_ready`. While that replacement is pending, hooks stage
+new turns too: search and compaction recovery continue to see the earlier published
+history, including none of those new turns. Give explicit maintenance enough time,
+for example `index PATH --agent claude --rebuild --seconds 120`, or repeat
+`index PATH --agent claude --seconds 120` without `--rebuild` until state is
+`complete`. Repeating `--rebuild` starts over. The seconds budget is checked between
+passes and is not a hard timeout on final publication.

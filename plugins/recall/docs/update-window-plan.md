@@ -1,5 +1,32 @@
 # Recall: total update-window plan
 
+## Current completion candidate — September 6, schema 10
+
+The maintainer explicitly promoted the previous revision/history/quality boundaries
+into work for this update. This section supersedes the older future dispositions
+below. Fable independently reviewed the candidate with no blocker. The maintainer restarted
+Codex and authorized proceeding with activation. Follow the latest activation
+receipt in the local review folder for installed revision, schema and remaining
+connection refreshes; do not interrupt resumed project tasks. Publication is held.
+
+| Row | Current disposition | Evidence / remaining action |
+|---|---|---|
+| P38/P52/P83 | Implemented and tested; activation awaits the shared idle window | Atomic staged durable rebuilds; exact revision reads; bounded history/pins/GC; archive integrity; portable history; migration rehearsal. 333 MB staging max 83 ms, final publication 0.83 s, peak 39.4 MB. Legacy exchange commands retain their separate behavior. |
+| P59/P69/P84 | Offline selected-history import implemented; real visible Chat path verified | Preview/select/scope workflow, Claude and ChatGPT export-shape fixtures, current-branch rules, explicit copied-chat snapshot. Real 690/1,095-character Chat messages round-trip exactly. No local account export found; certify a representative real export when supplied. No automatic account capture claim. |
+| P70 | Concrete portable handoff available | Explicit per-source export for a user's chosen cloud attachment flow. Connected-Mac MCP remains supported. No remote service is needed for this manual route; always-on remote reading would require a separately provisioned authenticated endpoint, which does not exist here. |
+| P71/P85 | Independent of P10: fresh synthetic model checks completed | Two fresh sessions each in Claude and Codex, eight questions each. Astra's rubric review matches all 16 substantive answers; 18/18 requested quotations verified. Four initial Codex searches exceeded the limit and were retried. Generic validation errors now state allowed bounds. This is not a human score or real-world generalization claim. |
+| P07 | Capture, compaction and new rebuild measurements pass | 333 MB capture max 198 ms, steady 4.4 ms, 41.8 MB RSS. Compaction fixtures remain below their gates. Snapshot migration preserved existing blocks/chunks/vectors/exchanges/sessions. |
+| P10 | Maintainer's human labels remain pending | Original 50-case packet untouched. Model checks do not close this gate. |
+| P22/P86 | Activation depends on other tasks finishing | Schema-9 readers already loaded into processes reject schema 10. Candidate packages and exact activation steps are prepared separately; update all consumers and migrate after idle, then fresh Codex/Claude reader checks. No live-store migration performed. |
+| Publication | Held, last, unchanged | Push dev/marketplace, tag/asset, blog deploy, catalog pin PR, stale PR closure, hotfix decision only on maintainer instruction. |
+
+Receipts: `~/Documents/recall-review-2026-09-05/active-completion/`.
+Detailed current contracts: [revisions](revision-evidence-design.md),
+[history import](history-import.md), and the candidate completion report.
+
+### Earlier status and chronology (superseded where stated above)
+
+
 This is the single working plan for the current update window. It includes Fable's open items, the durable-memory work, gaps exposed by that implementation, distribution work, and outstanding ideas in the older plans. New findings must be added here rather than left in a chat or described only as future work.
 
 **Outcome:** reliable recovery of prior work across coding agents, with complete retained evidence, useful retrieval, visible coverage, and an installation that has been exercised in a real session. Passing unit tests or committing a branch does not by itself complete this outcome.

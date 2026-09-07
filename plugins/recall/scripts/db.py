@@ -34,7 +34,7 @@ DB_BUSY_TIMEOUT_MS = 5000
 #   v5: exchanges.tool_text (commands/files Claude touched) + FTS column (rebuild)
 #   v6: durable memory tables (sources/blocks/chunks/vectors)
 #   v7: memory_sources skipped-record classification columns
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 # ---------------------------------------------------------------------------
 # Schema SQL
@@ -245,6 +245,9 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
         # index, memory_sources.scope_pinned, packed float32 vectors. initialize() is idempotent.
         from memory_store import initialize
         initialize(conn)   # idempotent: creates v6 tables, adds v7 columns
+    if current < 10:
+        from memory_store import initialize
+        initialize(conn)
     conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
     conn.commit()
 

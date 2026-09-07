@@ -56,7 +56,7 @@ def build_recovery_context(conn, session_id: str) -> Optional[str]:
     # too; they are never the "opening ask" and never quoted as recent context. A
     # block containing '<' is re-read whole and judged in Python, including
     # wrappers after leading whitespace or after the user's own words.
-    columns = ("SELECT id, role, timestamp, substr(text, %s) AS text, length(text) AS total, "
+    columns = ("SELECT id, role, timestamp, content_hash, substr(text, %s) AS text, length(text) AS total, "
                "instr(CAST(text AS BLOB), x'00') AS has_nul, instr(text, '<') > 0 AS maybe_meta "
                "FROM memory_blocks WHERE source_key=? AND kind='text' AND role IN ('user','assistant') ")
     user_candidates = conn.execute(columns % '1, ?' + "AND role='user' ORDER BY seq, ordinal LIMIT 8",
@@ -100,13 +100,13 @@ def build_recovery_context(conn, session_id: str) -> Optional[str]:
     if first_user is not None:
         row, (head, start, end) = first_user
         more = '…' if end - start > RECOVERY_OBJECTIVE_CHARS else ''
-        lines.append(f"Opening ask ({row['timestamp'][:10]}, get {row['id']} --start {start}):\n{head}{more}")
+        lines.append(f"Opening ask ({row['timestamp'][:10]}, get {row['id']} --start {start} --revision {row['content_hash']}):\n{head}{more}")
     lines.append("Most recent:")
     for r, (tail, start, _end) in recent:
         if first_user is not None and r['id'] == first_user[0]['id']:
             continue
         excerpt = ('…' if start else '') + tail
-        lines.append(f"- {r['role']} ({r['timestamp'][:10]}, get {r['id']} --start {start}):\n{excerpt}")
+        lines.append(f"- {r['role']} ({r['timestamp'][:10]}, get {r['id']} --start {start} --revision {r['content_hash']}):\n{excerpt}")
     lines.append("Use `/recall find <topic>` for anything else the summary dropped.")
     result = '\n'.join(lines)
     if len(result) > RECOVERY_MAX_CHARS:

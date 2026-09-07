@@ -147,16 +147,14 @@ def test_compaction_fetches_only_the_selected_source_text(store):
     assert measured.returned<=10000,'output is bounded, but every historical full text is materialized'
 
 
-def test_partial_rebuild_replaces_same_id_text_when_rescanned_and_keeps_untouched_history(store):
-    """R05, documented semantics: a rescanned message whose id is unchanged but whose
-    text changed is replaced at the moment it is rescanned (the new file content is the
-    truth); messages the rescan has not reached yet stay searchable until end of file."""
+def test_partial_rebuild_keeps_published_history_until_atomic_replacement(store):
+    """P52 supersedes the accepted R05 limitation: no partial replacement is exposed."""
     c,tmp=store;p=tmp/'trace.jsonl'
     write(p,rec('original accepted decision','same'),rec('former trailing block','later'));scan(c,p,tmp)
     write(p,rec('replacement proposal','same'),rec('subsequent trailing block','new'))
     assert scan(c,p,tmp,rebuild=True,max_records=1)['state']=='rebuilding'
-    assert memory.search(c,'replacement'),'rescanned same-id message shows its new text'
-    assert not memory.search(c,'original'),'documented: the old text of a rescanned same-id message is gone'
+    assert not memory.search(c,'replacement'),'replacement is staged until EOF'
+    assert memory.search(c,'original'),'the complete published snapshot survives the rescan'
     assert memory.search(c,'former'),'not-yet-rescanned history stays until EOF'
     assert scan(c,p,tmp)['state']=='complete'
     assert not memory.search(c,'former') and memory.search(c,'subsequent')

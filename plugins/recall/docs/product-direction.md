@@ -41,3 +41,25 @@ been enabled. A user who enables semantic CLI retrieval accepts the measured
 cold-start/runtime cost. Broader human-reviewed benefit remains P10. An embedding
 model can qualify as lightweight for a demanding recovery workflow, but that
 judgment requires both benefit and resource evidence.
+
+## Schema 10 measurement update
+
+The frozen operational token probe preserves identical retained rows across
+960fca2 and the candidate. Five-hit search plus a 2,000-character get changes from
+4,821 to 4,867.5 o200k_base proxy tokens for Recall and from 2,549.5 to 2,597 for
+triton. Static MCP schema increases 850 → 906 tokens; the Code skill 3,725 → 3,903.
+These are context-size costs, not a provider savings estimate.
+
+Four fresh synthetic answer checks (two Claude, two Codex; four questions each)
+used only a fixture store. All sixteen substantive answers match the fixed rubric
+under Astra review, and eighteen requested quote checks replay successfully.
+Claude's two runs report $0.491325 total, 30,253 cache-write tokens, 83,338
+cache-read tokens, 20 uncached input tokens and 5,791 output tokens. Codex reports
+207,760 aggregate input tokens, including 170,496 cached input, and 1,894 output
+tokens; no dollar charge is inferred. Input totals include repeated context across
+tool turns. Four initial Codex searches exceeded the ten-hit maximum and were
+retried, an observed source of extra calls; errors now state allowed bounds.
+
+This is a synthetic behavioral check authored/reviewed by Astra, not independent
+human evaluation, blinded production quality or a controlled comparison with a
+no-Recall workflow. The original P10 human packet remains unchanged.

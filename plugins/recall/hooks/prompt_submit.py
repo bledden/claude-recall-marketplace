@@ -587,7 +587,7 @@ def index_transcript(conn, session_id: str, transcript_path: str,
         conn.execute('SAVEPOINT durable_capture')
         try:
             from memory_store import index_file
-            index_file(conn, transcript_path, session_id=session_id, cwd=project_path)
+            index_file(conn, transcript_path, session_id=session_id, cwd=project_path, publish_rebuild=False)
             conn.execute('RELEASE durable_capture')
         except Exception as exc:
             conn.execute('ROLLBACK TO durable_capture')

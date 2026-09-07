@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.0] - Unreleased
 
+- Schema 10: atomic staged rebuild publication, exact retained-revision get through CLI/MCP, three superseded versions per block by default, explicit pins/GC, history-aware export/import and backup validation. Hooks stage without performing the final maintenance transaction.
+- Explicit offline conversation preview/import: selected Claude/ChatGPT text export shapes and rendered-chat snapshots, exact repository scope, branch handling, resource bounds and fail-before-write validation. Real account-export compatibility remains unverified pending a representative export.
+
+
 ### Added
-- Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; old revisions are not retained (P79/P71).
+- Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; retained older text is now separately recoverable under P52’s bounded revision policy (P79/P71).
 - Legacy capture skips flagged Claude skill bodies and compaction summaries; `clean-legacy-host SESSION [--apply]` audits/removes proven historical host prompt text without renumbering exchanges or changing replies, commands or annotations (P80/P66).
 - Explicit host repository mapping for foreground capture via `--cwd`, pinned across subsequent imports and refusing implicit movement of existing foreign sources. Two real local Cowork prefixes plus appended records verified; cloud-only app capture remains unsupported (P81/P69).
 - Opt-in local operational diagnostics for MCP readers and independent capture: fixed categories and numeric timings/counts only, no query/history text or network upload, two bounded 1 MiB segments, nonblocking writer coordination and failure isolation. App packaging can explicitly enable it per reader.

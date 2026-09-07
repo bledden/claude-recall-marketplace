@@ -78,7 +78,7 @@ def import_codex(cfg, db_path=None):
     try:
         for path in files:
             while time.monotonic() < deadline:
-                result = memory.index_file(conn, path, agent='codex')
+                result = memory.index_file(conn, path, agent='codex', publish_rebuild=False)
                 conn.commit()
                 if result['state'] not in ('backlog', 'rebuilding'):
                     break
