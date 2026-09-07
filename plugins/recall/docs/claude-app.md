@@ -1,5 +1,8 @@
 # Recall in Claude for Mac: chat and Cowork
 
+For first installation or an upgrade, start with the [2.5 checklist](install-and-update.md).
+It covers backup, schema migration, regenerated readers and loaded-client refresh.
+
 Claude Code, Desktop chat and Cowork have different execution and connection
 mechanisms. Installing the Code plugin does not configure all three. The 2.5
 candidate includes a scoped app reader preparation command. Generated launch

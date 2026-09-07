@@ -14,6 +14,8 @@ Version 2.5.0 is an unreleased development change. It adds a source/block/passag
 - `status`, `sources` and `doctor` expose source coverage, cursors, backlog, last capture time, omitted/malformed counts and integrity checks. Empty search results do not prove absence from unimported histories.
 - One optional local sentence-transformers backend can build vectors and fuse rankings with lexical search. Hooks never load a model. It remains opt-in after mixed results in the [retrieval probe](../benchmarks/README.md).
 
+Use the [install/update checklist](install-and-update.md) for current rollout steps.
+
 ## Try it without changing the live database
 
 Run from this repository; Python 3.9+ with SQLite FTS5 is required. Default paths need no third-party Python packages.
@@ -33,15 +35,15 @@ Current source adapters exclude reasoning, system/developer messages, tool resul
 
 ## Storage and recovery
 
-Schema 6 preserves legacy rows and FTS while adding durable tables. Existing sessions get an independent backfill cursor when their hooks next run; bulk backfill is explicit. The old capped text cannot recover a discarded tail unless its original transcript is still available.
+Schema 10 preserves available legacy rows and durable data; durable tables were introduced at schema 6. Existing sessions get an independent backfill cursor when their hooks next run; bulk backfill is explicit. The old capped text cannot recover a discarded tail unless its original transcript is still available.
 
 Source IDs combine agent and session. Message IDs come from the trace where available, otherwise its byte position. Block IDs derive from source/message identity, content ordinal and kind; repeating an import or rebuilding the same source does not duplicate blocks. Passage offsets refer to the retained redacted text, not original unredacted characters. Byte ranges identify source JSONL records.
 
-Missing originals leave retained evidence readable. Shrinkage and changes to the 256 bytes preceding a saved cursor stop incremental capture and request `--rebuild`; this is an append-continuity check, not a full-file tamper detector. Earlier edits that leave that window unchanged require explicit rebuild. Rebuild atomically replaces content in each indexing pass, then resumes the rest; it is not an all-or-nothing replacement of a multi-pass source.
+Missing originals leave retained evidence readable. Shrinkage and changes to the 256 bytes preceding a saved cursor stop incremental capture and request `--rebuild`; this is an append-continuity check, not a full-file tamper detector. Earlier edits that leave that window unchanged require explicit rebuild. Schema-10 rebuilds stage a complete candidate and publish it atomically at EOF through explicit indexing. Hooks can stage but never publish. Search and compaction recovery use the previous published text until completion; revision-specific get can recover retained older text afterward.
 
-`prune AGENT:SESSION` removes a durable source, chunks, FTS entries and vectors in the same transaction. It leaves original transcripts and legacy exchange rows. Legacy session pruning also removes matching durable sources. `export AGENT:SESSION` emits complete redacted blocks and provenance as `recall-blocks-v1` JSON; this is an archival format, not another JSONL importer input.
+`prune AGENT:SESSION` removes a durable source, chunks, FTS entries and vectors in the same transaction. It leaves original transcripts and legacy exchange rows. Legacy session pruning also removes matching durable sources. `export AGENT:SESSION` emits complete redacted blocks and provenance as `recall-blocks-v1` JSON by default. Add `--include-revisions` for `recall-blocks-v2` with retained revisions and pins. Use `import-export` to restore this format; it is not transcript JSONL.
 
-Make a SQLite backup before installing against an important live database. The schema upgrade is additive, but reverting the plugin does not remove new retained data or undo the migration. This development work leaves the installed plugin at Fable's v2.4.0; reload Claude's plugins or restart its session to activate that already completed update.
+Make a SQLite backup before installing against an important live database. The schema upgrade is additive, but reverting the plugin does not remove new retained data or undo the migration. Install new runtime files before refreshing clients; generated app readers and loaded MCP processes must also be updated. See the install/update checklist rather than assuming a plugin reload updates every consumer.
 
 ## Optional semantic experiment
 
@@ -54,7 +56,7 @@ python3 scripts/recall_memory.py --db /tmp/recall-trial.db search "reason for th
 
 Model files are fingerprinted; a changed model refuses retrieval until rebuilt. Source changes invalidate their vectors, and a build only attaches vectors to the exact text encoded. New passages need another explicit build. Semantic search scans the scoped vector corpus in memory; this is a small-corpus experiment, not a scalable approximate-nearest-neighbor service. No confidence threshold turns retrieved similarity into a factual answer.
 
-## Update-window changes after the first revision (2026-09-05, Fable)
+## Historical update-window changes after the first revision (2026-09-05, Fable)
 
 - Schema 7: `memory_sources` gains `excluded`, `metadata_records`, `unsupported_types`, `generation`, `head_hash`; `memory_blocks` gains `ordinal` and `generation`. Migration is idempotent and tested from schema 6 and from a schema-5 backup.
 - Rebuilds are generation-based and safe when interrupted; edit detection covers the file header and the cursor tail and names the changed window.
@@ -72,7 +74,7 @@ Model files are fingerprinted; a changed model refuses retrieval until rebuilt. 
 | Briefing and capture diagnostics | Implemented; historical evidence separated from live Git |
 | Retrieval evaluation | 60-question real-history anchor probe; human answer-quality labels remain with the maintainer; fresh synthetic Claude/Codex behavioral checks are recorded separately |
 | Embeddings | One offline backend implemented and tested; kept opt-in |
-| Installed local plugin update | v2.4.0 installed (cache 2.4.0); active session reload pending the user's window (P22); 2.5.0 install pending P20/P23 |
+| Installed local plugin update | Local schema-10 Code/skill/app-reader installation verified; Desktop Chat and Mac-connected Cowork activation verified; existing Codex connection refresh and older terminal skill reloads remain separate session actions |
 | Blog npm vulnerabilities | Separate dependency branch updates Astro/MDX/sharp/integrations and CI Node; clean install/build and zero-vulnerability audit |
 | Git push / publication | Excluded by user instruction; no push or publication performed |
 

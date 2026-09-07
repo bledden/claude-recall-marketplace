@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.0] - Unreleased
 
+**Upgrade instructions:** [Install or update Recall 2.5](docs/install-and-update.md).
+Back up before the first new writer, migrate once to schema 10, update generated
+reader copies, then refresh loaded client connections. New-user setup and
+post-update scope/revision checks are included. Public update availability follows
+publication; an installed plugin label alone does not prove a running reader updated.
+
 - Schema 10: atomic staged rebuild publication, exact retained-revision get through CLI/MCP, three superseded versions per block by default, explicit pins/GC, history-aware export/import and backup validation. Hooks stage without performing the final maintenance transaction.
 - Explicit offline conversation preview/import: selected Claude/ChatGPT text export shapes and rendered-chat snapshots, exact repository scope, branch handling, resource bounds and fail-before-write validation. Real account-export compatibility remains unverified pending a representative export.
 

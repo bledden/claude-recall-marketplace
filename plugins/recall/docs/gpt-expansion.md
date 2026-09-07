@@ -1,5 +1,8 @@
 # Cross-agent Recall
 
+For first installation or an upgrade, start with the [2.5 checklist](install-and-update.md).
+It covers backup, schema migration, regenerated readers and loaded-client refresh.
+
 Cross-agent recovery is now part of the active update window. Claude and Codex can contribute evidence to the same durable SQLite store, and coding clients can read it through an optional local MCP server. The existing Claude plugin and Codex skill continue to work. Capture, tool connectivity and verified model use are separate capabilities.
 
 ## Connect a coding client

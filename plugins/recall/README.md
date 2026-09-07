@@ -32,15 +32,20 @@ If you only need to re-anchor within the current session, native `/recap` / `/re
 
 ---
 
-## UPDATE: Claude Code 2.1.x Breaking Change
+## Installation scope
 
-**As of Claude Code 2.1.x, local plugins no longer persist across sessions.** This is an undocumented breaking change from 2.0.x behavior. See [issue #17089](https://github.com/anthropics/claude-code/issues/17089).
-
-Custom plugins now **require a marketplace structure** to work reliably with the VSCode extension. The `--plugin-dir` flag only works with the CLI, not VSCode.
+Use a marketplace installation for persistent Claude Code setup. `--plugin-dir`
+is a CLI session option; it does not install a plugin for every other client.
+Earlier installation reports are recorded in [issue #17089](https://github.com/anthropics/claude-code/issues/17089).
+For current setup, use the steps below and verify discovery in the client you use.
 
 ---
 
 ## Installation
+
+**New users and upgraders:** follow the [2.5 install/update checklist](docs/install-and-update.md)
+for schema-10 backup/migration, client-specific refresh steps, and a working
+search/get check. Installing the Code plugin alone does not update app readers.
 
 ### Claude Desktop chat and Cowork
 
@@ -55,7 +60,7 @@ does not configure shared memory for these surfaces.
 
 ### Claude Code: Option 1 - Pre-Built Marketplace (Recommended for VSCode)
 
-This is the recommended method: it serves the latest published release, and it is the only reliable method for the VSCode extension. (The community-marketplace listing `recall@claude-community` is pinned to a commit and may lag this marketplace.)
+This is the recommended method for persistent CLI and VSCode installation: it serves the latest published release. (The community-marketplace listing `recall@claude-community` is pinned to a commit and may lag this marketplace.)
 
 ```bash
 claude plugin marketplace add https://github.com/bledden/claude-recall-marketplace
@@ -89,7 +94,7 @@ Create `claude-recall-marketplace/.claude-plugin/marketplace.json`:
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "recall-local",
-  "version": "2.2.2",
+  "version": "2.5.0",
   "description": "Local marketplace for the recall plugin",
   "owner": {
     "name": "your-name",
@@ -134,14 +139,6 @@ source ~/.zshrc
 echo "alias claude='claude --plugin-dir /path/to/claude-recall-plugin'" >> ~/.bashrc
 source ~/.bashrc
 ```
-
-### Claude Code: Option 3 - Plugin Install Command (Not Recommended)
-
-```bash
-claude plugins install https://github.com/bledden/claude-recall-plugin
-```
-
-> **Warning:** This method does not reliably persist in Claude Code 2.1.x. The plugin may disappear after restarting. Use Option 1 instead.
 
 ---
 
