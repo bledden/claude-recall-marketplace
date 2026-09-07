@@ -25,7 +25,7 @@ connection refreshes; do not interrupt resumed project tasks. Publication is hel
 | P91 | Active, not implemented | Explicit privacy transitions and existing-content handling, crash-safe conversion, compatibility boundary, backups/restores and rollback preserving policy. No retroactive revocation claim for already disclosed text. |
 | P92 | Active, depends on P89–P91 | Automated owner/foreign/no-identity access matrix, negative filesystem probes for any host-isolation claim, full regression suite, fresh/continued host checks and resource/token rerun. Refresh affected P10 cases without asking for blanket relabeling. |
 | P93 | Active, depends on tested implementation | Exact user-facing guarantees and permissions, unsupported-host behavior, first-install/update instructions, rebuilt artifacts/readers/cache and repeated packaged installation/upgrade verification. Earlier runtime receipts do not certify privacy. |
-| P94 | Observed coverage/mapping/reading issues fixed; live selected histories backfilled; ongoing capture integration remains active | September 7 usage-repairs receipts: 765 tests; full-scope source_agents counts, persistent explicit CLI mapping with foreign-scope refusal, matching-reader/approved-route reuse and bounded evidence guidance. Original arrwDB evidence now returns; triton scope includes its Codex task. Claude transcript audit found missing original history and hidden coverage during evaluation, with no model Recall calls in the two sampled ordinary work sessions. No ranking or automatic-selection suppression. Read-only access still depends on host permissions; use the approved route. These are observed-case checks, not fresh model-quality certification. |
+| P94 | Observed coverage/mapping/reading issues fixed; live selected histories backfilled; ongoing capture integration remains active | September 7 usage-repairs receipts: 766 tests; full-scope source_agents counts, persistent explicit CLI mapping with foreign-scope refusal, matching-reader/approved-route reuse and bounded evidence guidance. Original arrwDB evidence now returns; triton scope includes its Codex task. Claude transcript audit found missing original history and hidden coverage during evaluation, with no model Recall calls in the two sampled ordinary work sessions. No ranking or automatic-selection suppression. Read-only access still depends on host permissions; use the approved route. These are observed-case checks, not fresh model-quality certification. |
 | P95 | P10 submission reviewed and PDF delivered; findings feed P94's fresh checks | p10-completed/ contains all 50 original answers, per-case assessments, derived label corrections and a verified 39-page PDF. Add historical-date boundaries and agent-versus-human review attribution to the fresh behavior checks. No blanket 50-case human rerun; no model ranking or blind accuracy claim from this exposed worksheet. |
 | Publication | Held, last, unchanged | Push dev/marketplace, tag/asset, blog deploy, catalog pin PR, stale PR closure, hotfix decision only on maintainer instruction. |
 
@@ -818,7 +818,7 @@ live-store activation status are unchanged. Publication stays held and last.
 
 See [retrieval troubleshooting](retrieval-troubleshooting.md) and local
 `usage-repairs/REVIEW.md`. A SQLite backup precedes the seven explicitly selected
-source refreshes; no transcript edits or unrelated history sweep. 765 tests pass.
+source refreshes; no transcript edits or unrelated history sweep. 766 tests pass.
 No schema change. The original arrwDB session now answers the previously uncovered
 question, and the triton Codex session is pinned to its actual Git scope.
 
@@ -844,3 +844,7 @@ relocation, bridge state, file history, frame links, cost state and latch state)
 plus four model-fallback notices were counted as unsupported in the triton source.
 They carry no conversation prose. The adapter now classifies these observed
 shapes as metadata, preserves mixed prose and still reports unknown kinds.
+
+The Recall Claude source had another 119 bookkeeping records of type pr-link,
+containing only PR linkage metadata. They are covered by the same classification
+fix. Both audited Claude sources preserve every existing block hash after rebuild.

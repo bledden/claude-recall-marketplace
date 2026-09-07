@@ -83,7 +83,7 @@ def test_skill_install_never_opens_or_creates_a_store(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('kind', ['worktree-state', 'relocated', 'atis-latch',
-    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state'])
+    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state', 'pr-link'])
 def test_observed_claude_bookkeeping_is_metadata(kind):
     record = {'type': kind, 'sessionId': 's'}
     assert list(memory.normalize_record(record, 'claude')) == []

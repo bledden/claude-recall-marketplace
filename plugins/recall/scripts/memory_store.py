@@ -222,7 +222,7 @@ def classify_skipped(entry, agent):
     # Observed Claude host bookkeeping in real Code rollouts. These carry no
     # conversation text; unknown future kinds remain unsupported below.
     if agent == 'claude' and typ in {'worktree-state', 'relocated', 'atis-latch',
-                                    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state'}:
+                                    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state', 'pr-link'}:
         return 'metadata'
     if typ in _METADATA_TYPES.get(agent, set()):
         return 'metadata'
