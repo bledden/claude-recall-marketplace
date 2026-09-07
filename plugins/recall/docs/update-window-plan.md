@@ -1,6 +1,6 @@
 # Recall: total update-window plan
 
-## Current completion candidate — September 6, schema 10
+## Current completion candidate — September 7, schema 10; session privacy added
 
 The maintainer explicitly promoted the previous revision/history/quality boundaries
 into work for this update. This section supersedes the older future dispositions
@@ -16,9 +16,17 @@ connection refreshes; do not interrupt resumed project tasks. Publication is hel
 | P70 | Concrete portable handoff available | Explicit per-source export for a user's chosen cloud attachment flow. Connected-Mac MCP remains supported. No remote service is needed for this manual route; always-on remote reading would require a separately provisioned authenticated endpoint, which does not exist here. |
 | P71/P85 | Independent of P10: fresh synthetic model checks completed | Two fresh sessions each in Claude and Codex, eight questions each. Astra's rubric review matches all 16 substantive answers; 18/18 requested quotations verified. Four initial Codex searches exceeded the limit and were retried. Generic validation errors now state allowed bounds. This is not a human score or real-world generalization claim. |
 | P07 | Capture, compaction and new rebuild measurements pass | 333 MB capture max 198 ms, steady 4.4 ms, 41.8 MB RSS. Compaction fixtures remain below their gates. Snapshot migration preserved existing blocks/chunks/vectors/exchanges/sessions. |
-| P10 | Maintainer's human labels remain pending | Original 50-case packet untouched. Model checks do not close this gate. |
-| P22/P86 | Files/store activated; existing Codex connection and older terminal skill text await a safe refresh boundary | Live schema 10 and fresh configured launches pass. Desktop Chat and Mac-connected Cowork were reloaded and verified through separate connectors. This already-loaded Codex MCP process remains old; no MCP Settings control was visible to the maintainer, so restart after triton-msl reaches a stopping point. Do not repeat migration. |
+| P10 | PASS: maintainer accepts the completed review, including the two noted answers | September 7: maintainer explicitly allows candidate-codex-02 and -22 for this practical acceptance, noting the answering model was known to be brief. Human evaluation is no longer a release gate. Preserve Astra's source findings, six qualifications and corrected worksheet citation in p10-completed/REVIEW.md; acceptance does not erase them. Five frozen source hashes and 47 supplied reference blocks match. All 28 earlier-project answers reference the eval set, so this remains practical acceptance rather than a blind score. The receipt supersedes older pending-label dispositions; the frozen packet remains unchanged. |
+| P22/P86 | Current Codex connection verified September 7; older terminal reloads remain per terminal | This task's live MCP status/search/revision-get succeeded with a valid exact quote. Receipt: schema10-activation/codex-reconnect-2026-09-07.json in the local review folder. No further Codex restart needed for the current runtime. Desktop Chat and Mac-connected Cowork were reloaded and verified through separate connectors. Source capture backlog is separate from connection health. |
 | P87 | Packaged first-install and upgrade workflows verified; release instructions included | Isolated packaged CLI/MCP flows pass for an empty store, v2.4/schema-5 upgrade and schema-9 upgrade; local marketplace 2.4→2.5 install/update also passes with isolated client settings. Documented backup, migration, generated-reader replacement, reconnect, quote offsets and rollback limits. See [install/update checklist](install-and-update.md). |
+| P88 | Session privacy scoped; host binding feasibility next | Maintainer requested shared/session-only/do-not-retain modes. [Design and retest matrix](session-privacy-design.md) distinguishes Recall access enforcement from host filesystem isolation. No broader system permission requirement; verify trusted caller binding per host before promising session-only support. |
+| P89 | Active, not implemented | Versioned policy registry, separate private stores, suppression records and routing across all durable/legacy capture paths. No private-to-shared fallback. |
+| P90 | Active, not implemented | Restricted CLI/MCP, current/revision/neighbor reads, semantic/legacy paths, counts, compaction, exports and supported per-session host attachment. No model-controlled identity grants. |
+| P91 | Active, not implemented | Explicit privacy transitions and existing-content handling, crash-safe conversion, compatibility boundary, backups/restores and rollback preserving policy. No retroactive revocation claim for already disclosed text. |
+| P92 | Active, depends on P89–P91 | Automated owner/foreign/no-identity access matrix, negative filesystem probes for any host-isolation claim, full regression suite, fresh/continued host checks and resource/token rerun. Refresh affected P10 cases without asking for blanket relabeling. |
+| P93 | Active, depends on tested implementation | Exact user-facing guarantees and permissions, unsupported-host behavior, first-install/update instructions, rebuilt artifacts/readers/cache and repeated packaged installation/upgrade verification. Earlier runtime receipts do not certify privacy. |
+| P94 | Observed coverage/mapping/reading issues fixed; live selected histories backfilled; ongoing capture integration remains active | September 7 usage-repairs receipts: 757 tests; full-scope source_agents counts, persistent explicit CLI mapping with foreign-scope refusal, matching-reader/approved-route reuse and bounded evidence guidance. Original arrwDB evidence now returns; triton scope includes its Codex task. Claude transcript audit found missing original history and hidden coverage during evaluation, with no model Recall calls in the two sampled ordinary work sessions. No ranking or automatic-selection suppression. Read-only access still depends on host permissions; use the approved route. These are observed-case checks, not fresh model-quality certification. |
+| P95 | P10 submission reviewed and PDF delivered; findings feed P94's fresh checks | p10-completed/ contains all 50 original answers, per-case assessments, derived label corrections and a verified 39-page PDF. Add historical-date boundaries and agent-versus-human review attribution to the fresh behavior checks. No blanket 50-case human rerun; no model ranking or blind accuracy claim from this exposed worksheet. |
 | Publication | Held, last, unchanged | Push dev/marketplace, tag/asset, blog deploy, catalog pin PR, stale PR closure, hotfix decision only on maintainer instruction. |
 
 Receipts: `~/Documents/recall-review-2026-09-05/active-completion/`.
@@ -805,3 +813,28 @@ read or used. Measurements and distribution receipts are under
 
 P71/P10 remain open as recorded. Optional semantic retrieval and its current
 live-store activation status are unchanged. Publication stays held and last.
+
+### September 7: P94 usage repairs and Claude log review
+
+See [retrieval troubleshooting](retrieval-troubleshooting.md) and local
+`usage-repairs/REVIEW.md`. A SQLite backup precedes the seven explicitly selected
+source refreshes; no transcript edits or unrelated history sweep. 757 tests pass.
+No schema change. The original arrwDB session now answers the previously uncovered
+question, and the triton Codex session is pinned to its actual Git scope.
+
+P76 is reopened by this evidence: manual import cured the immediate gap, but the
+Codex capture path was not running and did not register the task. Integrate a
+user-enabled continuing capture workflow with P88–P93's trusted session routing
+and suppression policy; verify new sessions and appends without Claude dependency.
+The current explicit foreground watcher is supported; no service or host hook was
+silently installed. Do not call this automatic freshness solved by one backfill.
+
+P94 follow-through: measure bounded reads in fresh model trials after privacy/capture
+integration and final reader replacement. Existing synthetic/parser tests and the
+source-grounded before/after queries certify their narrower behaviors. Publication
+is still held, and P10 remains accepted without a blanket repeat.
+
+P94 installation follow-through also found and fixed an unnecessary writer open in
+`install-codex-skill`: installing the skill now needs only its destination access,
+not permission to open, initialize or migrate SQLite. A no-store-access regression
+passes. Claude manifests and the generated Codex skill use their respective validators.

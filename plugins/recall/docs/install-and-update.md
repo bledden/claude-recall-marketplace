@@ -232,3 +232,7 @@ pre-upgrade store with its matching old runtime. Changes captured after that
 backup are not in it. Recall's current `restore` validates and migrates the staging
 copy to the current schema; it is a recovery command, **not a schema downgrade**.
 Do not delete the only copy of new history merely to make an older plugin start.
+
+For missing recent history, parent-directory scope or repeated sandbox errors,
+see [retrieval troubleshooting](retrieval-troubleshooting.md). Updating a skill or
+reader does not start ongoing Codex capture or automatically map older sources.

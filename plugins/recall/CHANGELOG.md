@@ -18,6 +18,8 @@ publication; an installed plugin label alone does not prove a running reader upd
 
 
 ### Added
+- Codex skill installation no longer opens, creates or migrates the memory store; it works independently of SQLite write access.
+- Recovery diagnostics now include scoped registered-source counts by agent. Explicit CLI `index --cwd` pins mappings and refuses silent scope changes, matching foreground capture. Skills preserve coverage, prefer working scoped access routes and read through relevant evidence instead of unconditionally exhausting every block. See [retrieval troubleshooting](docs/retrieval-troubleshooting.md).
 - Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; retained older text is now separately recoverable under P52’s bounded revision policy (P79/P71).
 - Legacy capture skips flagged Claude skill bodies and compaction summaries; `clean-legacy-host SESSION [--apply]` audits/removes proven historical host prompt text without renumbering exchanges or changing replies, commands or annotations (P80/P66).
 - Explicit host repository mapping for foreground capture via `--cwd`, pinned across subsequent imports and refusing implicit movement of existing foreign sources. Two real local Cowork prefixes plus appended records verified; cloud-only app capture remains unsupported (P81/P69).

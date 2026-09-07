@@ -828,6 +828,32 @@ def brief(conn, repo_id=None, source_key=None, limit=8, since=None):
                                'text':' '.join(a['text'].split())[:200]} for a in actions]}
 
 
+def index_mapped_file(conn, path, agent='claude', cwd='', **kwargs):
+    """Explicit host mapping is a durable pin, never an implicit rescope.
+
+    Hold the writer lock across the scope check and capture. The caller commits
+    or rolls back, as for index_file. Background indexing preserves this pin.
+    """
+    if not cwd:
+        return index_file(conn, path, agent=agent, **kwargs)
+    cwd = str(Path(cwd).expanduser().resolve())
+    path = Path(path).expanduser().resolve()
+    sid, _ = trace_metadata(path, agent, kwargs.get('session_id', ''))
+    key = agent + ':' + sid
+    if agent == 'claude' and path.parent.name == 'subagents':
+        key += '/' + path.stem
+    if not conn.in_transaction:
+        conn.execute('BEGIN IMMEDIATE')
+    old = conn.execute('SELECT repo_id,byte_offset FROM memory_sources WHERE source_key=?', (key,)).fetchone()
+    if old and old['repo_id'] != repository_identity(cwd):
+        return {'source': key, 'blocks': 0, 'offset': old['byte_offset'], 'state': 'scope_mismatch',
+                'next_action': 'Existing source belongs to another repository; inspect it and use explicit rescope first.'}
+    result = index_file(conn, path, agent=agent, cwd=cwd, **kwargs)
+    if result['state'] != 'path_conflict':
+        conn.execute('UPDATE memory_sources SET scope_pinned=1 WHERE source_key=?', (key,))
+    return result
+
+
 def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
     """Source listing. `source_key` narrows to one source (R11: search/brief pass
     the same filter they retrieve with, so coverage describes what was searched)."""
@@ -838,6 +864,7 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
         scope=(' WHERE repo_id=?' if repo_id else '')
         args=(repo_id,) if repo_id else ()
     total=conn.execute('SELECT count(*) FROM memory_sources'+scope,args).fetchone()[0]
+    agents=dict(conn.execute('SELECT agent,count(*) FROM memory_sources'+scope+' GROUP BY agent',args).fetchall())
     rows=conn.execute(sql+scope+' ORDER BY last_indexed_at DESC,source_key LIMIT ? OFFSET ?',args+(limit,offset)).fetchall()
     output=[]
     for raw in rows:
@@ -861,10 +888,10 @@ def status(conn, repo_id=None, limit=20, offset=0, source_key=None):
         output.append(row)
     chunks=conn.execute('SELECT count(*) FROM memory_chunks').fetchone()[0]
     vectors=conn.execute('SELECT count(*) FROM memory_vectors').fetchone()[0]
-    return {'sources':output,'source_count':total,'next_offset':offset+len(output) if offset+len(output)<total else None,
+    return {'sources':output,'source_count':total,'source_agents':agents,'next_offset':offset+len(output) if offset+len(output)<total else None,
             'semantic':{'chunks':chunks,'vectors':vectors,'unembedded':chunks-vectors,'vector_format':'f32le-v1'},
             'legacy_sessions':conn.execute('SELECT count(*) FROM sessions').fetchone()[0],
-            'coverage_notice':'Only explicitly indexed sources are searched. Legacy capped exchanges require backfill.',
+            'coverage_notice':'Only explicitly indexed sources are searched. Complete means indexed to the checked file end, not that every session is registered. Source-agent counts cover the full selected scope, not freshness. Legacy capped exchanges require backfill.',
             'skipped_meaning':{'excluded_by_policy':'content deliberately not retained: tool results, reasoning, developer/system messages, image/thinking-only turns, mirrored events, Codex compaction summaries, Claude isMeta skill/command bodies',
                                'metadata_records':'records with no conversation content (titles, modes, attachments, usage)',
                                'unsupported':'shapes the adapter does not recognise; listed per source in unsupported_types',
@@ -897,6 +924,7 @@ def compact_coverage(status_result, repo_id=None, details=None):
             skipped[kind] = skipped.get(kind, 0) + count
     return {'repo_id': repo_id if repo_id is not None else status_result.get('repo_id'),
             'source_count': status_result['source_count'], 'checked_sources': len(rows),
+            'source_agents': status_result.get('source_agents', {}),
             'next_offset': status_result.get('next_offset'), 'checked_source_states': states,
             'checked_backlog_bytes': sum((r.get('backlog_bytes') or 0) for r in rows),
             'checked_skipped_records': skipped, 'semantic': status_result.get('semantic'),

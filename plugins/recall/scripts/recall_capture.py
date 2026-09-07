@@ -66,22 +66,12 @@ class CaptureWorker:
         while self.pending and time.monotonic() < deadline:
             path = self.pending.popleft()
             try:
-                if self.cwd:
-                    sid, _ = memory.trace_metadata(path, self.agent)
-                    key = self.agent+':'+sid
-                    if self.agent == 'claude' and path.parent.name == 'subagents':
-                        key += '/'+path.stem
-                    if not self.conn.in_transaction:
-                        self.conn.execute('BEGIN IMMEDIATE')
-                    old = self.conn.execute('SELECT repo_id FROM memory_sources WHERE source_key=?', (key,)).fetchone()
-                    if old and old['repo_id'] != memory.repository_identity(self.cwd):
-                        self.conn.rollback()
-                        errors.append({'path':str(path),'state':'scope_mismatch',
-                            'next_action':'Existing source belongs to another repository; inspect it and use explicit rescope first.'})
-                        continue
-                result = memory.index_file(self.conn, path, agent=self.agent, cwd=self.cwd)
-                if self.cwd and result.get('state') != 'path_conflict':
-                    self.conn.execute('UPDATE memory_sources SET scope_pinned=1 WHERE source_key=?', (result['source'],))
+                result = memory.index_mapped_file(self.conn, path, agent=self.agent, cwd=self.cwd)
+                if result['state'] == 'scope_mismatch':
+                    self.conn.rollback()
+                    errors.append({'path': str(path), 'state': result['state'],
+                                   'next_action': result['next_action']})
+                    continue
                 self.conn.commit()
             except (OSError, ValueError, sqlite3.Error) as exc:
                 self.conn.rollback()

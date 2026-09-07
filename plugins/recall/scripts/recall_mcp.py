@@ -38,7 +38,7 @@ SPECS = {
         'query': field('string', minLength=1, maxLength=2000), 'source': SOURCE,
         'limit': field('integer', minimum=1, maximum=10, default=5),
         'kind': field('string', enum=['text', 'tool_use', 'all'], default='text')}, ['query']),
-    'recall_get': ('Read a cited block in full, following next_start for long evidence. Offsets count Unicode characters; Bare IDs read published current text; revision selects retained older text.', {
+    'recall_get': ('Read a cited passage; follow next_start when needed evidence continues, or when the full block was requested. Offsets count Unicode characters; Bare IDs read published current text; revision selects retained older text.', {
         'block_id': field('string', minLength=1, maxLength=64),
         'start': field('integer', minimum=0, maximum=2**31-1, default=0),
         'max_chars': field('integer', minimum=1, maximum=8000, default=8000),

@@ -37,21 +37,28 @@ Use the target's absolute path explicitly:
 Check the returned repo_id, hit project_path and compact coverage before relying
 on hits. Add `--full-coverage` to search/brief when per-source paths, freshness and
 actions are needed; source checks cover only the latest page, with next_offset
-pointing to more. No matching source or a backlog means coverage is incomplete; report that
+pointing to more. `source_agents` counts registered histories across the selected scope;
+Claude-only coverage does not include a Codex task. Complete sources do not prove
+the requested session was imported. No matching source or a backlog means coverage is incomplete; report that
 and use an explicitly authorized import/refresh when appropriate. Do not treat
 incidental word matches as evidence for a missing project. Do not widen to `--all`
 or rescope stored histories merely to obtain results. `--all` includes every indexed
 repository; use it only when the requested recovery spans repositories.
 
+Preserve the JSON coverage and errors; use --limit/--max-chars instead of piping to head.
+If results repeat the current question or a test worksheet, seek the original source
+with a source/date filter or report missing evidence; another query cannot repair missing capture.
 Add `--kind tool_use` for commands, `--kind all` for both.
-Read a hit in full: `python3 "SCRIPT" get <block_id> --start <start_char> --neighbors 1`, following `next_start`.
+Read the relevant passage: `python3 "SCRIPT" get <block_id> --start <start_char> --max-chars 2000 --neighbors 0`. Follow `next_start` or add neighbors when the needed decision, qualification or requested full answer continues beyond that window. Stop once the evidence answers the question.
 Project catch-up: `python3 "SCRIPT" brief --cwd "/path/to/working/repository" --live-git`.
 `python3 "SCRIPT" status` lists known sources globally; search/brief coverage is scoped.
 `doctor` requires write access even without `--repair`: it opens the migration
 path, runs FTS integrity insert commands and records an invocation. Use status or
 sources for read-only coverage checks.
-If using Recall MCP tools, their scope is fixed at server launch. Check recall_status
-and use the explicitly scoped CLI when the MCP server targets a different repository.
+Prefer an available matching-scope Recall MCP reader for reads. Its scope is fixed
+at server launch: check recall_status once, and use the explicitly scoped CLI when
+the reader targets a different repository. Reuse successful access routing for later
+reads in this task; do not repeat an already-established sandbox failure.
 If a read fails with `store_access`, `unable to open database file`, or a read-only
 database error, this may be the host sandbox preventing SQLite WAL sidecar access.
 Use an available MCP reader only if its scope matches, or retry the same read command
@@ -108,7 +115,7 @@ def parser():
     q=sub.add_parser('index')
     q.add_argument('path',type=Path,help='Explicit file or directory; no implicit scan of personal histories')
     q.add_argument('--agent',choices=['claude','codex'],required=True)
-    q.add_argument('--cwd',default='')
+    q.add_argument('--cwd',default='',help='Pin the selected history to this host repository; existing foreign scopes require explicit rescope')
     q.add_argument('--session',default='')
     q.add_argument('--seconds',type=float,default=10)
     q.add_argument('--rebuild',action='store_true',help='Replace retained blocks for the selected existing source')
@@ -222,7 +229,7 @@ def run(args, conn):
             result=None
             blocks=0
             while time.monotonic()<deadline:
-                result=memory.index_file(conn,path,agent=args.agent,session_id=args.session,cwd=args.cwd,rebuild=rebuild)
+                result=memory.index_mapped_file(conn,path,agent=args.agent,session_id=args.session,cwd=args.cwd,rebuild=rebuild)
                 conn.commit()
                 blocks+=result['blocks']
                 rebuild=False
@@ -236,7 +243,8 @@ def run(args, conn):
                 break
         return {'files_discovered':len(files),'files_processed':len(results),'results':results,
                 'budget_exhausted':time.monotonic()>=deadline,'resume':'Repeat the same index command without --rebuild.',
-                'conflicts':[r['offered_path'] for r in results if r.get('state')=='path_conflict']}
+                'conflicts':[r['offered_path'] for r in results if r.get('state')=='path_conflict'],
+                'scope_conflicts':[r['source'] for r in results if r.get('state')=='scope_mismatch']}
     if cmd=='get':
         return memory.get_block(conn,args.block_id,args.start,min(args.max_chars,40000),min(args.neighbors,10),args.quote,args.expected_hash,args.revision)
     if cmd in ('search','brief'):
@@ -388,9 +396,12 @@ def main(argv=None):
     read_only = read_only or (args.command == 'clean-legacy-host' and not args.apply)
     conn = None
     try:
-        conn = get_read_connection(args.db) if read_only else get_connection(args.db)
+        # Installing text into the host's skill root does not capture or maintain
+        # memory. It must work before a store exists and in a read-only sandbox.
+        if args.command != 'install-codex-skill':
+            conn = get_read_connection(args.db) if read_only else get_connection(args.db)
         result=run(args,conn)
-        if not read_only:
+        if not read_only and conn is not None:
             conn.commit()
             # Read-only operations must not require usage-counter writes. Explicit
             # --db maintenance must never log to a different (live) store.
