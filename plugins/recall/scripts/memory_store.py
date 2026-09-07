@@ -219,6 +219,11 @@ def classify_skipped(entry, agent):
     mirrored events, Codex compaction summaries, Claude isMeta bodies, developer/system messages, thinking/image-only turns)
     or 'unsupported' (a shape the adapter does not recognise)."""
     typ = entry.get('type')
+    # Observed Claude host bookkeeping in real Code rollouts. These carry no
+    # conversation text; unknown future kinds remain unsupported below.
+    if agent == 'claude' and typ in {'worktree-state', 'relocated', 'atis-latch',
+                                    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state'}:
+        return 'metadata'
     if typ in _METADATA_TYPES.get(agent, set()):
         return 'metadata'
     if agent == 'codex':
@@ -241,6 +246,8 @@ def classify_skipped(entry, agent):
         content = message.get('content')
         if isinstance(content, list):
             kinds = {b.get('type') for b in content if isinstance(b, dict)}
+            if kinds and kinds <= {'fallback'}:
+                return 'metadata'  # host model-routing notice, no user/assistant prose
             if kinds and kinds <= {'tool_result', 'thinking', 'redacted_thinking', 'image', 'document'}:
                 return 'excluded'
         return 'excluded' if content in (None, '', []) else 'unsupported'

@@ -8,6 +8,7 @@ from db import get_connection
 import memory_store as memory
 from recall_memory import parser, run
 from recall_capture import CaptureWorker
+import pytest
 
 
 def trace(path, sid, cwd):
@@ -79,3 +80,23 @@ def test_skill_install_never_opens_or_creates_a_store(tmp_path, monkeypatch):
                               '--skills-dir', str(tmp_path/'skills')]) == 0
     assert (tmp_path/'skills/recall/SKILL.md').is_file()
     assert not db.parent.exists()
+
+
+@pytest.mark.parametrize('kind', ['worktree-state', 'relocated', 'atis-latch',
+    'bridge-session', 'file-history-delta', 'frame-link', 'cost-state'])
+def test_observed_claude_bookkeeping_is_metadata(kind):
+    record = {'type': kind, 'sessionId': 's'}
+    assert list(memory.normalize_record(record, 'claude')) == []
+    assert memory.classify_skipped(record, 'claude') == 'metadata'
+    assert memory.classify_skipped(record, 'codex') == 'unsupported'
+
+
+def test_fallback_notices_do_not_hide_unknown_or_mixed_prose():
+    record = {'type': 'assistant', 'message': {'role': 'assistant', 'content': [
+        {'type': 'fallback', 'from': {'model': 'a'}, 'to': {'model': 'b'}}]}}
+    assert list(memory.normalize_record(record, 'claude')) == []
+    assert memory.classify_skipped(record, 'claude') == 'metadata'
+    record['message']['content'].append({'type': 'text', 'text': 'Actual decision'})
+    assert list(memory.normalize_record(record, 'claude'))[0][2] == 'Actual decision'
+    record['message']['content'] = [{'type': 'future_notice'}]
+    assert memory.classify_skipped(record, 'claude') == 'unsupported'

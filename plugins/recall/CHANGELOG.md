@@ -18,6 +18,7 @@ publication; an installed plugin label alone does not prove a running reader upd
 
 
 ### Added
+- Known Claude host bookkeeping and model-fallback notices count as metadata instead of unsupported records; mixed conversation text is preserved and unknown record kinds remain visible. Existing counts update on explicit rebuild.
 - Codex skill installation no longer opens, creates or migrates the memory store; it works independently of SQLite write access.
 - Recovery diagnostics now include scoped registered-source counts by agent. Explicit CLI `index --cwd` pins mappings and refuses silent scope changes, matching foreground capture. Skills preserve coverage, prefer working scoped access routes and read through relevant evidence instead of unconditionally exhausting every block. See [retrieval troubleshooting](docs/retrieval-troubleshooting.md).
 - Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; retained older text is now separately recoverable under P52’s bounded revision policy (P79/P71).
