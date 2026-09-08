@@ -1,6 +1,6 @@
 # Privacy Policy — Claude Recall Plugin
 
-**Last updated:** September 6, 2026
+**Last updated:** September 7, 2026
 
 ## What Data Is Stored
 
@@ -10,14 +10,14 @@ The recall plugin stores conversation data locally on your machine to enable con
 |---|---|---|
 | Exchange text | `~/.claude/context-recall/recall.db` | User prompts (up to 1,000 chars) and assistant responses (all text blocks of the turn merged, up to 4,000 chars) for search and recall |
 | Durable blocks and passages (2.5+) | Same DB (memory tables) | Complete redacted user/assistant text and tool-call inputs, Claude compaction summaries labeled `host`, plus derived search slices. Unlike legacy exchange rows, retained blocks are not truncated |
-| Tool calls (v2.4+) | Same DB (exchanges.tool_text) | One line per tool call Claude made in the turn: the shell command, the file path edited/read, the URL fetched, or the tool name (300 chars per call, 2,000 per exchange). Tool **output** is never stored |
+| Tool calls (v2.4+) | Same DB (exchanges.tool_text) | One line per tool call Claude made in the turn: the requested shell command, file path, URL, or tool name; these record intent, not successful execution (300 chars per call, 2,000 per exchange). Tool **output** is never stored |
 | Session metadata | Same DB | Session IDs, project paths, timestamps, byte offsets for incremental indexing |
 | Auto-tags | Same DB | Technical terms extracted from exchange text for search and discovery |
 | Manual tags | Same DB | User-applied tags for organizing sessions and exchanges |
 | Highlights | Same DB | Summaries of findings flagged for cross-session sharing |
 | Connections | Same DB | Opt-in links between sessions for highlight sharing |
 | Session config | Same DB (sessions.metadata) | User preferences (skill_enabled, check_mode, etc.) |
-| Usage counter (v2.2.3+) | Same DB (invocations) | Timestamp, session ID, project hash, command name, and command arguments for each recall invocation — arguments may include search terms you typed. Powers `/recall usage`; never leaves your machine |
+| Usage counter (v2.2.3+) | Same DB (invocations) | Timestamp, session ID, project hash, command name, and command arguments for legacy CLI and maintenance invocations — arguments may include legacy search terms you typed. Durable read-only CLI/MCP retrieval does not add counter rows. Powers `/recall usage`; never leaves your machine |
 | Recall events | `~/.claude/recall-events.log` | Timestamps and session IDs when `/recall` is invoked (for observability) |
 | Settings (2.5+) | `~/.claude/context-recall/settings.json` | Explicit opt-ins only (Codex import on/off, its directory and time budget). No conversation content |
 | Backups (2.5+, on request) | Wherever you point `backup DEST` (the default location suggested by docs is the same directory) | A complete copy of the store, including retained text. Delete backups when you delete the store |
@@ -60,7 +60,7 @@ This is pattern matching, not detection of every secret. Anything that does not 
 
 ## Data Retention
 
-Data persists in the SQLite database until you explicitly delete it. The plugin does not auto-prune or expire data. You control retention entirely:
+Current retained history persists until you explicitly delete it; sessions are not automatically pruned. Superseded unpinned revisions are bounded separately (three per block by default), as described below. You control deletion and revision retention:
 
 - `/recall prune --session <id>` — delete a legacy session and matching durable data
 - `python3 scripts/recall_memory.py prune AGENT:SESSION` — delete an explicitly imported durable source, passages and vectors; legacy exchange rows and original transcripts remain
@@ -151,7 +151,7 @@ the normal redaction policy. New redaction rules can change imported hashes.
 Snapshots do not prove authorship or completeness, and no account request, network
 fetch, upload, credential access, background capture or telemetry is added.
 
-## Opt-in private coding sessions (schema 12 candidate)
+## Opt-in private coding sessions (schema 12)
 
 The [dedicated native workflow](docs/private-sessions.md) separates supported Recall
 readers by root session and keeps private content out of shared indexes and counts.

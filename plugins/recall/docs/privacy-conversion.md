@@ -1,6 +1,6 @@
 # Existing-history conversion contract
 
-September 7, 2026. **Schema 12, isolated candidate; not activated or published.** The
+September 7, 2026. **Recall 2.5.0, schema 12. Conversion remains explicitly opt-in.** The
 `recall_conversion` module is exposed through the owner-only `recall_private.py`
 preview/convert/recover commands, never through model tools. Dedicated new-session
 attachment and controls are described in [the user workflow](private-sessions.md).
@@ -91,7 +91,7 @@ The fixture disabled built-in/delegation tools and used a local scripted provide
 it is a transport/connection receipt, not model-quality evidence or proof of a
 full coding workflow. It does not certify Codex, Desktop Chat or Cowork isolation.
 
-The candidate now includes a dedicated new-session launcher, pause/resume,
+Version 2.5 includes a dedicated new-session launcher, pause/resume,
 revocation/regrant, reviewed deletion and excerpt disclosure, and private
 backup/restore. Shared app connectors remain unavailable for session-only memory.
 Native fixture, fresh model and final activation evidence are tracked separately;

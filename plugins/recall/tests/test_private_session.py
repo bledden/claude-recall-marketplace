@@ -1,5 +1,6 @@
 """Private controller contract; real-host receipts are separate from these tests."""
 import json
+import io
 import sys
 import uuid
 from pathlib import Path
@@ -11,6 +12,23 @@ from recall_access import Lease
 from recall_conversion import atomic_record
 import recall_private_session as native
 import recall_private_control as control
+
+
+def test_claude_native_frames_are_bounded_before_read(monkeypatch):
+    monkeypatch.setattr(native, 'MAX_FRAME', 64)
+    class BoundedStream(io.StringIO):
+        def readline(self, size=-1):
+            assert size == 65
+            return super().readline(size)
+    stream = BoundedStream('x' * 1000 + '\n')
+    with pytest.raises(ValueError, match='frame budget'):
+        list(native.claude_events(stream))
+    assert stream.tell() == 65
+
+
+def test_claude_native_frames_skip_non_events():
+    stream = io.StringIO('bad json\n[]\nnull\n{"type":"result"}\n')
+    assert list(native.claude_events(stream)) == [{'type': 'result'}]
 
 
 @pytest.fixture

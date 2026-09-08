@@ -121,6 +121,22 @@ def claude_command(binary, profile_path, profile, mcp, settings, *, model=None):
     return args
 
 
+def claude_events(stream):
+    """Bound native frames before buffering a whole line, as for Codex."""
+    while True:
+        raw = stream.readline(MAX_FRAME + 1)
+        if not raw:
+            return
+        if len(raw) > MAX_FRAME:
+            raise ValueError('Native output exceeds frame budget')
+        try:
+            event = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(event, dict):
+            yield event
+
+
 def run_claude(binary, profile_path, profile, prompt, *, model=None, env=None):
     script = str(Path(__file__).resolve())
     env = dict(os.environ if env is None else env, RECALL_DB=profile['shared'])
@@ -145,10 +161,7 @@ def run_claude(binary, profile_path, profile, prompt, *, model=None, env=None):
         proc.stdin.write(prompt); proc.stdin.close()
         seen = False
         try:
-            for raw in proc.stdout:
-                if len(raw) > MAX_FRAME: raise ValueError('Native output exceeds frame budget')
-                try: event = json.loads(raw)
-                except ValueError: continue
+            for event in claude_events(proc.stdout):
                 if event.get('type') == 'system' and event.get('subtype') == 'init':
                     if event.get('session_id') != profile['owner'][7:]:
                         raise ValueError('Claude started a different session; private connection stopped')

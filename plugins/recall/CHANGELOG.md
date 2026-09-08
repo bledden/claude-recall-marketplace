@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.5.0] - Unreleased
+## [2.5.0] - 2026-09-07
 
 ### Added
 - Durable retained redacted blocks for supported Claude Code and Codex records, passage search, stable block references, exact character-offset retrieval, pagination and neighboring evidence.
@@ -39,12 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-agent legacy prune namespace collisions.
 - Misleading MCP maintenance errors for query budgets or busy stores, missing-store error classification, and excessive repeated coverage output.
 
+- Python 3.9 CLI errors crashing on newer SQLite constant names; access failures now retain structured guidance.
+- Apple SQLite compatibility for a newly created private store and standalone private-backup validation; readers remain read-only and validation writes only a disposable staging copy.
+- Oversized native Claude frames being buffered before the size check.
+- Stale privacy/retention wording and optional-assistant gating instructions that conflicted with automatic primary-skill selection.
+
 ### Upgrade and validation
 - Public release ZIPs and managed marketplace copies exclude internal update plans/history and retired design plans; user guides remain included.
 - Follow docs/install-and-update.md and PRIVACY.md. Do not mix obsolete writers with private-session policies or describe a raw downgrade as privacy-preserving.
 - Rebuild each generated app reader. Replace Cowork uploads, retain the MCP component, then quit/reopen Claude at an idle boundary and verify in a fresh task; Replace alone retained old Python processes in the tested app.
 - Use the canonical app preparer's ZIP with its manifest at archive root. The local activation repacking error was corrected before upload; actual extracted ZIPs are now part of release QA.
-- Candidate validation: 893 tests (including three release-packaging checks), 129 packaged checks, real-backup migration preservation, native lifecycle/access tests, and fresh Codex/Claude/Desktop/Cowork retrieval checks. Practical human acceptance is recorded without a blind/general accuracy claim.
+- Release validation: 900 tests (including three release-packaging checks), 897 packaged runtime checks, real-backup migration preservation, native lifecycle/access tests, and fresh Codex/Claude/Desktop/Cowork retrieval checks. Practical human acceptance is recorded without a blind/general accuracy claim.
 
 ## [2.4.0] - 2026-09-05
 

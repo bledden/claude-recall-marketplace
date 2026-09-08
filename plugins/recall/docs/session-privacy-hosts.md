@@ -1,10 +1,9 @@
 # Session privacy: supported attachment and validation
 
-September 7, 2026. Schema-12 candidate, locally activated but not publicly
-released. Existing sessions remain shared unless explicitly converted. See the
+September 7, 2026. Recall 2.5.0, schema 12. Existing sessions remain shared unless explicitly converted. See the
 [user workflow](private-sessions.md) and [conversion contract](privacy-conversion.md).
 
-| Surface | Candidate support | Evidence and boundary |
+| Surface | Supported workflow | Evidence and boundary |
 |---|---|---|
 | Dedicated Claude Code controller | Fixed native root ID, one-turn print/resume, separate private MCP, lifecycle capture; standard file/shell tools; Agent/Task disabled | Native scripted fixture runs read tools and `pwd`, resumes the same ID and captures actual native history. Separate authenticated Opus synthetic checks passed; these are small behavior probes, not broad answer-quality validation. |
 | Dedicated Codex controller | Native app-server root, host-supplied thread ID checked per dynamic call, native capture at turn/tool boundaries, resume; standard shell/filesystem sandbox | Native scripted fixture runs read tools and `pwd`, resumes the same root and captures actual native history. No implicit fork or subagent grant. The app-server dynamic-tool API is experimental and version-sensitive. |
@@ -36,7 +35,7 @@ simulated no-POSIX coverage, but no actual Windows privacy validation is claimed
 ## Validation scope
 
 Maintainer validation includes native-controller
-receipts and the 890-test runtime suite, covering owner/foreign/no-identity and lifecycle tests, paused/deleted/revoked
+receipts and the 900-test release suite, covering owner/foreign/no-identity and lifecycle tests, paused/deleted/revoked
 access checks, interrupted conversion/deletion, safe backup restoration, selected
 disclosure, fresh Codex model checks and resource/token measurements. Native
 scripted providers validate software behavior and cannot establish model quality.

@@ -1,13 +1,13 @@
 # Recall Assistant Skill — Behavioral Eval Script
 
 Run these manually in a Claude Code session with the plugin loaded.
-Record PASS/FAIL for each scenario.
+Record PASS/FAIL for each scenario. This worksheet tests the optional `recall-assistant` behaviors. The primary `recall` skill and compaction recovery have separate activation; turning `skill_enabled` off does not disable them. Distinguish hook reminders and this assistant’s suggestions from primary skill selection.
 
 ## Setup
 
 ```
 # Load the plugin
-claude --plugin-dir /Users/bledden/Documents/claude-recall-plugin
+claude --plugin-dir /path/to/claude-recall-plugin
 
 # Enable the skill
 /recall config skill_enabled true
@@ -23,7 +23,7 @@ claude --plugin-dir /Users/bledden/Documents/claude-recall-plugin
 ```
 Then say: "I think we discussed warp divergence earlier"
 
-**Expected:** Claude responds normally, does NOT suggest /recall.
+**Expected:** No optional assistant suggestion or hook-backed proactive reminder. The primary `recall` skill may still recover relevant missing history.
 **PASS/FAIL:** ___
 
 ### 1b. Skill enabled — proactive behavior
@@ -175,7 +175,7 @@ Then start discussing kernel optimization:
 ```
 Then trigger a behavioral signal (e.g., Claude contradicting itself):
 
-**Expected:** Claude does NOT suggest recall based on behavioral signal.
+**Expected:** This optional assistant does not suggest recall based on the disabled behavioral signal. Primary skill selection is a separate capability.
 **PASS/FAIL:** ___
 **Note:** This is hard to test reliably. Record observations.
 

@@ -7,7 +7,7 @@ description: Proactive context recovery, highlight sharing, and session linking 
 
 You have access to the **recall plugin** — a cross-session, cross-project conversation recall system backed by SQLite. This skill guides you on when and how to use it proactively.
 
-**IMPORTANT: All behaviors below are gated.** Before taking any proactive action described here, check whether the user has enabled this skill by verifying `skill_enabled` is true. If not enabled, do nothing — the user interacts with the plugin only via explicit `/recall` commands.
+**IMPORTANT: All behaviors below are gated.** Before taking any proactive action described here, check whether the user has enabled this skill by verifying `skill_enabled` is true. If not enabled, do not apply this optional assistant’s suggestions or sharing behaviors. The separate `recall` skill can still be selected automatically for relevant recovery, and compaction recovery remains independently enabled.
 
 ---
 

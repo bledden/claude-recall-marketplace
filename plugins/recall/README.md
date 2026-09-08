@@ -1,13 +1,19 @@
-> **Release candidate:** Recall 2.5.0 (store schema 12) is built and locally activated but not yet
-> publicly released. Schema 12 adds opt-in private coding sessions and reviewed memory controls;
-> existing sessions stay shared unless you convert one. Read the
-> [private-session workflow and limits](docs/private-sessions.md) before enabling it.
+# Recall 2.5.0
 
-# Claude Recall Plugin v2.5.0 (unreleased)
+Local evidence recall for Claude Code and Codex: recover earlier decisions,
+conversation passages and recorded tool requests with source references and
+checked quotations. Claude Desktop Chat and Mac-connected Cowork can use
+separately configured read-only readers.
 
-See the [installation and upgrade guide](docs/install-and-update.md) for setup and the [changelog](CHANGELOG.md) for release status.
+The core uses Python and SQLite with no embedding dependency required.
+Lexical retrieval is the default. Optional local embeddings, operational
+logging and private coding sessions are explicit opt-ins.
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that persists conversation context across sessions, `/clear` commands, and compaction events. It adds cross-session search, tagging, highlight sharing between sessions, and observability.
+**Upgrading?** Version 2.5 uses store schema 12. Back up and follow the
+[installation and update guide](docs/install-and-update.md) before mixing
+new runtimes with existing stores and loaded readers.
+
+See the [changelog](CHANGELOG.md) for the release history.
 
 > **Marketplace Status:** Published in Anthropic's community marketplace as `recall@claude-community` (`/plugin marketplace add anthropics/claude-plugins-community`, then install `recall`). The catalog entry is pinned to one commit of this repo and is moved by pull request, so it can lag the releases here.
 >
@@ -734,7 +740,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 MIT License - see LICENSE file for details.
 
-## Durable evidence and cross-agent recovery (2.5.0, unreleased)
+## Durable evidence and cross-agent recovery (2.5.0)
 
 `/recall find "why did we reject batching"` searches complete redacted text in indexed Claude and Codex sessions. Each result includes a stable block reference and a precise character range. `/recall get <block_id>` reads it, optionally with `--start N` and `--neighbors N`. Pagination limits output, not retained text. Legacy `/recall search`, `lastN`, and `around` continue to read capped exchange rows; `find`/`get` use the durable block store.
 

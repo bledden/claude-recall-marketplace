@@ -145,11 +145,14 @@ def test_private_backup_restore_preserves_restrictions_and_exact_content(private
     control.backup(s,dest)
     with pytest.raises(FileExistsError):control.backup(s,dest)
     assert dest.stat().st_mode & 0o777 == 0o600
+    backup_bytes = dest.read_bytes()
     preview=control.restore_preview(s,dest)
+    assert dest.read_bytes() == backup_bytes
     write(trace,'Later content',True);s.capture(trace)
     old=s.reader();old.call('recall_status',{})
     with pytest.raises(ValueError,match='changed'):control.restore(s,dest,'bad')
     control.restore(s,dest,preview['fingerprint'])
+    assert dest.read_bytes() == backup_bytes
     with pytest.raises(ValueError,match='revoked'):old.call('recall_status',{})
     control.change(s,'grant')
     assert s.reader().call('recall_search',{'query':'Publish'})['hits']

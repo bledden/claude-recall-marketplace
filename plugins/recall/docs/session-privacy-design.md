@@ -1,10 +1,10 @@
 # Session privacy: implementation scope and validation
 
-Prepared September 7, 2026; updated in the isolated `astra/session-privacy` candidate.
-**Not enabled in the installed runtime.** Capture suppression and an internal
-private-store backend and reviewed internal conversion are implemented. Native
-launch/resume/fork behavior and the remaining transition controls are still gates. See [host/candidate status](session-privacy-hosts.md). The maintainer requested them for the current
-update window. P88–P93 in the total plan track completion before publication.
+Released September 7, 2026 with Recall 2.5.0, schema 12. The dedicated
+Claude Code and Codex controllers implement native attachment, capture,
+retrieval and reviewed transition controls. Existing sessions remain shared
+unless explicitly converted. See [supported hosts and validation boundaries](session-privacy-hosts.md)
+and [the private-session workflow](private-sessions.md).
 
 ## What users should be able to choose
 
@@ -182,49 +182,46 @@ These are implementation acceptance gates, not verified host capabilities. When 
 host cannot provide them, retain shared retrieval or do-not-retain behavior with
 clear limits; do not substitute a global “private” connector accessible everywhere.
 Any OS sandbox/broker component must be separately justified and tested before
-shipping. The first privacy milestone should establish host feasibility before
-promising session-only availability on every surface.
+shipping. Host feasibility must be established before promising session-only availability
+on an additional surface.
 
-## What must be retested
+## Regression coverage contract
 
 All following rows are automated where possible. Human permission dialogs and
 the accuracy/usefulness judgment remain distinct from enforcement tests.
 
-| Area | Required evidence after implementation | Existing evidence affected |
+| Area | Required evidence after implementation | Release interpretation |
 |---|---|---|
-| Access matrix | Owner, same-repo foreign session, foreign repo, no identity, forged identity and subagent/fork against shared/private/off sources; fresh random synthetic secrets | P62/P63/P68/P71 reader claims need new privacy receipts |
-| Every read route | Deny guessed current/revision IDs, neighbors, lexical/semantic snippets, legacy reads, brief, compaction fallback, highlights, exports and existence/count leaks | P38/P52/P65/P75/P78/P83 behavior needs regression coverage |
-| Every capture route | Both adapters, hooks, watch, bulk/recursive index, imported snapshots, new and appended records; suppression survives path aliases, rebuild and reimport | P07/P54/P65/P69/P72/P81/P84 |
-| Concurrency and transitions | Racing capture/rebuild/read with mode changes, pinned revisions, revocation, crashes at every move step, interrupted cleanup, restart/recovery | P07/P33/P53/P83 |
-| Upgrade and rollback | Empty install and schema 5/9/10 upgrade, old live reader rejection, backup/restore, policy preservation and rollback refusal | P86/P87 must be rerun with final packages |
-| Real host flows | Fresh and existing Claude Code/Codex sessions; Chat and Cowork routes; owner succeeds, another conversation fails, post-compaction/restart still enforced | P17/P19/P22/P62/P68/P71 must be refreshed where supported |
-| Host isolation claim | From an unauthorized agent, attempt raw DB/WAL/transcript/backup reads, credential/config access, unrestricted CLI and policy mutation | New requirement; no existing receipt proves this |
-| Cost and correctness | Full suite; hook/capture/compaction budgets, mixed-store search latency, memory/storage and token-output comparison; optional vectors remain off by default | P07/P74/P75/P82 and published resource claims |
+| Access matrix | Owner, same-repo foreign session, foreign repo, no identity, forged identity and subagent/fork against shared/private/off sources; fresh random synthetic secrets | Scoped shared readers do not grant private access |
+| Every read route | Deny guessed current/revision IDs, neighbors, lexical/semantic snippets, legacy reads, brief, compaction fallback, highlights, exports and existence/count leaks | Current and retained evidence use the same owner boundary |
+| Every capture route | Both adapters, hooks, watch, bulk/recursive index, imported snapshots, new and appended records; suppression survives path aliases, rebuild and reimport | Suppression applies across supported adapters and import paths |
+| Concurrency and transitions | Racing capture/rebuild/read with mode changes, pinned revisions, revocation, crashes at every move step, interrupted cleanup, restart/recovery | Exclusive leases and resumable transitions protect cooperating clients |
+| Upgrade and rollback | Empty install and schema 5/9/10 upgrade, old live reader rejection, backup/restore, policy preservation and rollback refusal | Current restore preserves restrictive policy; obsolete readers are refused |
+| Real host flows | Fresh and existing Claude Code/Codex sessions; Chat and Cowork routes; owner succeeds, another conversation fails, post-compaction/restart still enforced | Native coding controllers are supported; general Chat/Cowork private readers are not |
+| Host isolation claim | From an unauthorized agent, attempt raw DB/WAL/transcript/backup reads, credential/config access, unrestricted CLI and policy mutation | Same-account raw filesystem isolation is explicitly outside this release |
+| Cost and correctness | Full suite; hook/capture/compaction budgets, mixed-store search latency, memory/storage and token-output comparison; optional vectors remain off by default | Fixture budgets and context measurements are distinct from universal guarantees |
 
-For P10, continue collecting answers and checking accuracy. Existing clean shared
+The 50-case practical human recovery review was accepted. Further evaluations
+should continue checking answer accuracy. Existing clean shared
 retrieval observations remain evidence for their original configuration; they
 do not certify privacy. Mark answer-key-exposed runs separately (including the
 reported round2-02 answer). A fresh conversation alone does not remove answers
 already present in its authorized corpus. Use a separate frozen source corpus
 without evaluation reports for clean retrieval checks, and ensure test chats are
-not automatically imported into it. After implementation, rerun shared retrieval
+not automatically imported into it. When the access layer changes, rerun shared retrieval
 regressions and new owner/foreign-session cases. Repeat affected model-quality
 cases if ranking or context changes; do not require the maintainer to relabel all
 50 merely because an access layer was added.
 
-## Delivery sequence and release conditions
+## Release validation
 
-1. P88: finish this contract and prove caller binding on each host using scratch
-   fixtures. Record unsupported hosts honestly. No live privacy conversion yet.
-2. P89: implement policy, routing, private storage and all capture suppression.
-3. P90: enforce all readers/legacy paths and implement supported host attachment.
-4. P91: implement reviewed transitions, migration, backup/restore and failure recovery.
-5. P92: run the access/security matrix, full regressions, host checks and budgets.
-6. P93: update README, PRIVACY, skills, install/update instructions and release
-   notes with exact guarantees, defaults, host limitations and permission steps;
-   rebuild archives/readers/caches and verify first install and upgrade again.
+The release includes owner-bound native attachment, shared/private capture
+routing, enforced reader checks and reviewed conversion, deletion, sharing and
+backup/restore. Validation covers the access matrix, native lifecycle, migration
+preservation, first install, upgrades and resource budgets. The release suite
+passes 900 tests, including three packaging checks; the packaged runtime has
+897 packaged runtime checks. Small fresh model checks and practical
+human acceptance remain distinct from general answer-quality claims.
 
-This is a substantial cross-cutting change, not a settings toggle. No honest
-completion estimate precedes the host-binding spike. Do not mark the release
-ready on the earlier 752-test receipt after changing these paths. Publication
-remains held and last; the requested privacy work is active update-window scope.
+Opting into private memory requires the documented dedicated workflow. It does
+not create OS isolation from other processes running as the same account.

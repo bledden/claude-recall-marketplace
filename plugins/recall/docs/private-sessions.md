@@ -160,5 +160,5 @@ restore workflow and keep suppression metadata intact.
 The native-host fixture exercises start, read tools, a shell command and resume.
 Its provider responses are scripted and do not establish model answer quality.
 Fresh-model results, authentication limitations and resource measurements belong
-in the accompanying validation receipt. P10 remains accepted; session privacy
+in the accompanying validation receipt. The practical human recovery review is accepted; session privacy
 has a separate enforcement test matrix.

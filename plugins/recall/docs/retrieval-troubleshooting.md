@@ -55,5 +55,5 @@ The local audit found justified recovery attempts searching incomplete or absent
 histories. It also found unconditional full-block-reading instructions and
 truncated output that hid coverage. The fixes preserve automatic skill selection
 and the existing ranking algorithm. No blind accuracy or billed-token savings
-are claimed. Session privacy is separate work in the total update-window plan;
-repository scoping is not isolation from another agent with filesystem access.
+are claimed. For optional session privacy, use the [dedicated private-session workflow](private-sessions.md).
+Repository scoping is not isolation from another agent with filesystem access.

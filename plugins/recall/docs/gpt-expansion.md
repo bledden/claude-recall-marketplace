@@ -3,7 +3,7 @@
 For first installation or an upgrade, start with the [2.5 checklist](install-and-update.md).
 It covers backup, schema migration, regenerated readers and loaded-client refresh.
 
-Cross-agent recovery is now part of the active update window. Claude and Codex can contribute evidence to the same durable SQLite store, and coding clients can read it through an optional local MCP server. The existing Claude plugin and Codex skill continue to work. Capture, tool connectivity and verified model use are separate capabilities.
+Recall 2.5 includes cross-agent recovery. Claude and Codex can contribute evidence to the same durable SQLite store, and coding clients can read it through an optional local MCP server. The existing Claude plugin and Codex skill continue to work. Capture, tool connectivity and verified model use are separate capabilities.
 
 ## Connect a coding client
 
@@ -84,7 +84,7 @@ The stdio implementation supports the 2024-11-05 through 2025-11-25 revisions li
 
 Recall itself makes no network requests. Retrieved evidence goes to the calling host and may be sent to its configured model provider. A read-only tool annotation does not make recalled text trustworthy instructions or make cloud inference local.
 
-ChatGPT web access and ChatGPT export ingestion remain separate decisions (P59). The present implementation opens no HTTP port and does not imply access to account chat history. Additional transcript formats are also separate from allowing another client to read existing Claude/Codex evidence. P58/P60–P62 track the active implementation, host checks and cross-agent handoffs; the original activation, human-evaluation and publication gates remain.
+Automatic ChatGPT web capture is not provided. Explicit selected export import is documented in [history import](history-import.md). The present implementation opens no HTTP port and does not imply access to account chat history. Additional transcript formats are also separate from allowing another client to read existing Claude/Codex evidence. The supported host routes and their validation limits are described above; retrieval does not imply automatic capture of the current conversation.
 
 When task cwd is a parent folder such as Documents, the installed Codex skill uses the actual target repository with CLI `--cwd` and checks returned coverage. MCP scope remains fixed at launch. New capture excludes Claude `isMeta` bodies and labels Claude compaction summaries `host`; get/search may return those summaries, while brief/recovery never select them. Older sources require an explicit rebuild for reclassification.
 

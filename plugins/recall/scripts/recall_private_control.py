@@ -255,10 +255,13 @@ def checked_backup(store, source):
                     if size > 1024**3: raise ValueError('Private backup exceeds 1 GiB restore budget')
                     digest.update(chunk); out.write(chunk)
             staged.chmod(0o600)
-            # Check schema before opening any migrator. This candidate does not
+            # Check schema before opening any migrator. This release does not
             # silently upgrade or downgrade private content from another release.
+            # This is our disposable copy, not the supplied backup or target.
+            # A writable staging open lets Apple's SQLite prepare WAL sidecars
+            # needed even to read a standalone WAL-mode backup's schema.
             import sqlite3
-            raw = sqlite3.connect(staged.as_uri()+'?mode=ro',uri=True)
+            raw = sqlite3.connect(staged.as_uri()+'?mode=rw',uri=True)
             try:
                 if raw.execute('PRAGMA user_version').fetchone()[0] != SCHEMA_VERSION:
                     raise ValueError('Private backup requires its matching schema version')

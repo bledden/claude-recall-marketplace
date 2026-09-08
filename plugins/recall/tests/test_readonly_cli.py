@@ -69,6 +69,10 @@ def test_new_read_sees_committed_wal(evidence):
     path, _ = evidence
     writer = sqlite3.connect(path)
     writer.execute('PRAGMA journal_mode=WAL')
+    # Prepare WAL sidecars through the writer. Apple's SQLite cannot create
+    # missing sidecars from mode=ro even in a writable directory.
+    writer.execute('BEGIN IMMEDIATE')
+    writer.rollback()
     first = db.get_read_connection(path)
     first.close()
     writer.execute("UPDATE memory_blocks SET text='Fresh committed WAL evidence'")
@@ -84,7 +88,7 @@ def test_new_read_sees_committed_wal(evidence):
 def test_access_failure_is_actionable_without_traceback(monkeypatch, capsys):
     def denied(*a):
         error = sqlite3.OperationalError('unable to open database file')
-        error.sqlite_errorcode = sqlite3.SQLITE_CANTOPEN
+        error.sqlite_errorcode = 14  # SQLITE_CANTOPEN, including Python 3.9
         raise error
     monkeypatch.setattr(cli, 'get_read_connection', denied)
     assert cli.main(['search', 'amber']) == 1
@@ -93,3 +97,22 @@ def test_access_failure_is_actionable_without_traceback(monkeypatch, capsys):
     assert error['code'] == 'store_access'
     assert 'same read and scope' in error['next_action']
     assert not streams.out
+
+
+@pytest.mark.parametrize('message, expected_code', [
+    ('unable to open database file', 'store_access'),
+    ('attempt to write a readonly database', 'store_access'),
+    ('access permission denied', 'store_access'),
+    ('database is locked', None),
+    ('no such table: memory_blocks', None),
+])
+def test_python39_sqlite_errors_have_safe_classification(monkeypatch, capsys, message, expected_code):
+    for name in ('SQLITE_CANTOPEN', 'SQLITE_READONLY', 'SQLITE_PERM'):
+        monkeypatch.delattr(sqlite3, name, raising=False)
+    def denied(*args):
+        raise sqlite3.OperationalError(message)  # No sqlite_errorcode before 3.11.
+    monkeypatch.setattr(cli, 'get_read_connection', denied)
+    assert cli.main(['search', 'amber']) == 1
+    output = json.loads(capsys.readouterr().err)
+    assert output['error'] == message
+    assert output.get('code') == expected_code

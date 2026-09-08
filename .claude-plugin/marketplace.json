@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "recall",
-      "description": "Cross-session, cross-project conversation recall: verbatim exchanges and the commands Claude ran, ranked search with match snippets, secrets redacted at index time, compaction recovery, highlight sharing, a durable evidence store with cited retrieval across Claude and Codex sessions, and a skill Claude invokes on its own",
+      "description": "Local evidence recall across Claude Code and Codex histories: durable text and tool-request retrieval, checked citations, compaction recovery, optional private coding sessions, and separately configured Claude app readers.",
       "source": "./plugins/recall",
       "category": "productivity"
     }

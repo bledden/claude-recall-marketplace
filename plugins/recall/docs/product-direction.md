@@ -1,6 +1,6 @@
 # Recall's product direction
 
-Recall makes earlier work easy to recover and check: the original words, exact commands, decisions and reasons, with enough surrounding evidence to continue confidently.
+Recall makes earlier work easy to recover and check: the retained words, tool requests, decisions and reasons, with enough surrounding evidence to continue confidently.
 
 Its priorities are:
 
@@ -12,7 +12,7 @@ Its priorities are:
 
 New work should solve an observed failure or repeated user need, have a measurable resource cost, and preserve these properties. A competing project's feature list is not sufficient justification. Broader agent adapters, automatic synchronization, additional retrieval models and integrations wait for evidence that they improve this workflow enough to justify their maintenance and resource costs.
 
-The current update window prioritizes safe everyday activation, the human evaluation, operational reliability and context efficiency. The Funes comparison is a factual landscape check, not a parity checklist or an accuracy claim.
+Recall 2.5 prioritizes safe everyday activation, practical human evaluation, operational reliability and context efficiency. The Funes comparison is a factual landscape check, not a parity checklist or an accuracy claim.
 
 Optional embeddings already exist: an explicit build with a supplied local model,
 followed by CLI search with `--semantic`. They are not a retired or forbidden
@@ -38,14 +38,14 @@ measurements, not retrieval quality scores or universal latency bounds.
 Keep the single existing offline backend opt-in and keep models out of capture
 hooks. Current live readers use lexical retrieval; no live semantic build has
 been enabled. A user who enables semantic CLI retrieval accepts the measured
-cold-start/runtime cost. Broader human-reviewed benefit remains P10. An embedding
+cold-start/runtime cost. The practical human review accepted the tested recovery results, but does not establish broader embedding benefit. An embedding
 model can qualify as lightweight for a demanding recovery workflow, but that
 judgment requires both benefit and resource evidence.
 
 ## Schema 10 measurement update
 
 The frozen operational token probe preserves identical retained rows across
-960fca2 and the candidate. Five-hit search plus a 2,000-character get changes from
+960fca2 and the schema-10 development snapshot. Five-hit search plus a 2,000-character get changes from
 4,821 to 4,867.5 o200k_base proxy tokens for Recall and from 2,549.5 to 2,597 for
 triton. Static MCP schema increases 850 → 906 tokens; the Code skill 3,725 → 3,903.
 These are context-size costs, not a provider savings estimate.
@@ -62,4 +62,4 @@ retried, an observed source of extra calls; errors now state allowed bounds.
 
 This is a synthetic behavioral check authored/reviewed by Astra, not independent
 human evaluation, blinded production quality or a controlled comparison with a
-no-Recall workflow. The original P10 human packet remains unchanged.
+no-Recall workflow. The separate 50-case human review was accepted for practical recovery, with known-context exposure recorded; it is not a blind accuracy estimate.

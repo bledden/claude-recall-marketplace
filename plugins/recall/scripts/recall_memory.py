@@ -428,11 +428,18 @@ def main(argv=None):
         if conn is not None:
             conn.rollback()
         error = {'error': str(exc)}
-        access_codes = {sqlite3.SQLITE_CANTOPEN, sqlite3.SQLITE_READONLY, sqlite3.SQLITE_PERM}
+        # SQLite primary result codes are stable, but Python only exposes their
+        # constants and exception attributes starting in 3.11.
+        access_codes = {14, 8, 3}  # CANTOPEN, READONLY, PERM
         code = getattr(exc, 'sqlite_errorcode', 0) or 0
+        legacy_access_error = (isinstance(exc, sqlite3.OperationalError)
+                               and not code and str(exc).lower() in (
+                                   'unable to open database file',
+                                   'attempt to write a readonly database',
+                                   'access permission denied'))
         if read_only and conn is None and isinstance(exc, FileNotFoundError):
             error.update(code='store_missing', next_action='No store at this path. Reads never create one; check --db/RECALL_DB or capture/import the intended history first.')
-        elif read_only and (isinstance(exc, PermissionError) or (code & 255) in access_codes):
+        elif read_only and (isinstance(exc, PermissionError) or (code & 255) in access_codes or legacy_access_error):
             error.update(code='store_access', next_action=(
                 'The store or SQLite WAL sidecars are inaccessible in this execution context. '
                 'Retry this same read and scope through the host approval mechanism, or an '

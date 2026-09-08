@@ -2,7 +2,7 @@
 
 Use the [installation and upgrade guide](install-and-update.md) for setup, coordinated migration and reader refresh. This document describes durable storage and retrieval; the [changelog](../CHANGELOG.md) records release status.
 
-Version 2.5.0 is an unreleased development change. It adds a source/block/passage store alongside the v2.4 exchange store. The new search interface retrieves historical evidence with exact references; the host agent writes the explanation and checks current facts separately.
+Version 2.5.0 adds a source/block/passage store alongside the v2.4 exchange store. The new search interface retrieves historical evidence with exact references; the host agent writes the explanation and checks current facts separately.
 
 ## What changed
 

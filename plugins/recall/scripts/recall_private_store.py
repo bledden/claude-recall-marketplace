@@ -62,6 +62,10 @@ class SessionStore:
                 private.execute(sql)
             private.commit()
             private.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+            # Publish a standalone file. Apple's SQLite cannot open a copied
+            # WAL-mode file read-only before a writer creates its sidecars.
+            # Capture selects WAL again on its first authorized writer open.
+            private.execute('PRAGMA journal_mode=DELETE')
             private.close(); private = None
             # Publish only the complete, empty, tagged store; link refuses to
             # replace a destination created concurrently. No content is in it yet.

@@ -1,7 +1,7 @@
 {
   "name": "recall",
   "version": "2.5.0",
-  "description": "Local cross-session evidence recovery: retained redacted conversation text and tool requests, ranked search, verified citations, compaction recovery, and skills for coding agents",
+  "description": "Local evidence recall across Claude Code and Codex histories: durable text and tool-request retrieval, checked citations, compaction recovery, optional private coding sessions, and separately configured Claude app readers.",
   "author": {
     "name": "bledden",
     "url": "https://github.com/bledden"
