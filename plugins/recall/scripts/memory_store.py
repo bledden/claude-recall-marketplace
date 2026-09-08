@@ -204,6 +204,8 @@ def repair_schema(conn):
     before = set(verify_schema(conn))
     conn.executescript(_db._SCHEMA_SQL)
     initialize(conn)
+    from recall_privacy import initialize as initialize_privacy
+    initialize_privacy(conn)
     for fts in FTS_TABLES:
         if any(p.startswith(fts) or p == 'missing table ' + fts or p.startswith('missing table ' + fts + '_') for p in before):
             try:
@@ -470,7 +472,17 @@ def index_file(conn, path, agent='claude', session_id='', cwd='', max_bytes=2*10
     happens to be valid JSON.
     """
     path = str(Path(path).expanduser().resolve())
+    from recall_privacy import mode, capture_identities
     session_id, cwd = trace_metadata(path, agent, session_id, cwd)
+    if not conn.in_transaction:
+        conn.execute('BEGIN IMMEDIATE')
+    identities = capture_identities(conn,path,agent,session_id)
+    if agent == 'claude' and Path(path).parent.name == 'subagents':
+        identities.add(agent + ':' + session_id + '/' + Path(path).stem)
+    if any(mode(conn, key) == 'off' for key in identities):
+        return {'source': agent + ':' + session_id, 'blocks': 0, 'offset': 0,
+                'state': 'capture_disabled', 'next_action': 'Owner disabled new capture; existing retained history is unchanged.'}
+
     source_key = agent + ':' + session_id
     if agent == 'claude' and Path(path).parent.name == 'subagents':
         # A subagent transcript carries its PARENT's sessionId. Key it as its own
@@ -856,7 +868,7 @@ def index_mapped_file(conn, path, agent='claude', cwd='', **kwargs):
         return {'source': key, 'blocks': 0, 'offset': old['byte_offset'], 'state': 'scope_mismatch',
                 'next_action': 'Existing source belongs to another repository; inspect it and use explicit rescope first.'}
     result = index_file(conn, path, agent=agent, cwd=cwd, **kwargs)
-    if result['state'] != 'path_conflict':
+    if result['state'] not in ('path_conflict', 'capture_disabled'):
         conn.execute('UPDATE memory_sources SET scope_pinned=1 WHERE source_key=?', (key,))
     return result
 

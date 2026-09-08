@@ -34,15 +34,15 @@ def field(typ, **kw):
 
 SOURCE = field('string', minLength=1, maxLength=300, description='Optional exact agent:session identifier within the configured repository.')
 SPECS = {
-    'recall_search': ('Recover previous decisions, discussions, or exact commands from indexed Claude and Codex sessions in this repository.', {
+    'recall_search': ('Recover missing prior decisions, discussions, or exact commands in this repository. Reuse sufficient evidence already in context. Limit is 1–10 (default 5); compact coverage is included, so status is not a required first step.', {
         'query': field('string', minLength=1, maxLength=2000), 'source': SOURCE,
         'limit': field('integer', minimum=1, maximum=10, default=5),
         'kind': field('string', enum=['text', 'tool_use', 'all'], default='text')}, ['query']),
-    'recall_get': ('Read a cited passage; follow next_start when needed evidence continues, or when the full block was requested. Offsets count Unicode characters; Bare IDs read published current text; revision selects retained older text.', {
+    'recall_get': ('Read a cited passage (default 2,000 characters, no neighbors); follow next_start when needed evidence continues, or when the full block was requested. Offsets count Unicode characters; Bare IDs read published current text; revision selects retained older text.', {
         'block_id': field('string', minLength=1, maxLength=64),
         'start': field('integer', minimum=0, maximum=2**31-1, default=0),
-        'max_chars': field('integer', minimum=1, maximum=8000, default=8000),
-        'neighbors': field('integer', minimum=0, maximum=2, default=1),
+        'max_chars': field('integer', minimum=1, maximum=8000, default=2000),
+        'neighbors': field('integer', minimum=0, maximum=2, default=0),
         'quote': field('string', minLength=1, maxLength=8000, description='Exact quotation to check within the returned window; use citation_check offsets only when valid.'),
         'revision': field('string', minLength=64, maxLength=64, description='Read this exact retained content hash, including a superseded or deleted block; unavailable revisions fail explicitly.'),
         'expected_hash': field('string', minLength=64, maxLength=64, description='Check that the returned revision matches an earlier content_hash; use revision to recover retained older text.')}, ['block_id']),
@@ -87,10 +87,11 @@ def validate_arguments(name, args):
 
 
 @contextmanager
-def read_connection(path):
+def read_connection(path, private_owner=None):
     """mode=ro, not immutable: observe commits made by independent capture processes."""
-    conn = sqlite3.connect(Path(path).expanduser().resolve().as_uri() + '?mode=ro', uri=True,
-                           timeout=0.5, isolation_level=None)
+    from recall_access import connect
+    conn = connect(path, read_only=True)
+    conn.isolation_level = None
     try:
         conn.row_factory = sqlite3.Row
         conn.execute('PRAGMA query_only=ON')
@@ -100,6 +101,9 @@ def read_connection(path):
         conn.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
         # Authorization and retrieval must see the same source scope, even during rescope/prune.
         conn.execute('BEGIN')
+        from recall_privacy import check_private_owner, check_shared_visibility
+        check_private_owner(conn, private_owner)
+        check_shared_visibility(conn)
         yield conn
     finally:
         conn.close()
@@ -118,14 +122,20 @@ class RecallService:
         result.pop('legacy_sessions', None)
         result['repo_id'] = self.repo_id
         result['capture'] = 'Read-only server: only separately indexed sources are visible.'
+        if not compact:
+            result['privacy'] = {'session_only_available':False,'reason':'This repository reader has no independently bound conversation owner.',
+                                 'host_filesystem_isolation':'unverified','capture_policy':'Owner-managed shared/off; previously retained history is unchanged.'}
         if compact:
             return memory.compact_coverage(result, self.repo_id,
                 'Latest source page checked only; use recall_status and its next_offset for source paths, freshness and repair actions. This reader does not capture new conversations.')
         return result
 
+    def open_connection(self):
+        return read_connection(self.db_path)
+
     def call(self, name, arguments):
         args = validate_arguments(name, arguments)
-        with read_connection(self.db_path) as conn:
+        with self.open_connection() as conn:
             source = args.get('source')
             if source and not conn.execute('SELECT 1 FROM memory_sources WHERE source_key=? AND repo_id=?', (source, self.repo_id)).fetchone():
                 raise ValueError('Unknown source in this repository')
@@ -218,8 +228,12 @@ class Protocol:
                 if self.version >= '2025-06-18':
                     result['structuredContent'] = value
             except (ValueError, sqlite3.Error, OSError) as exc:
+                from recall_access import StoreAccessError
                 text = str(exc).lower()
-                if isinstance(exc, ValueError):
+                if isinstance(exc, StoreAccessError):
+                    message = str(exc)
+                    outcome = exc.outcome
+                elif isinstance(exc, ValueError):
                     message = str(exc)
                     outcome = 'invalid_request'
                 elif 'interrupted' in text:

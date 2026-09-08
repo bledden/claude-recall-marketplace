@@ -1,6 +1,6 @@
 # Durable memory: implementation and rollout
 
-The [total update-window plan](update-window-plan.md) tracks remaining work, historical deferrals, integration, installation and publication. This document describes the implementation already on the development branch; it is not a declaration that the rollout is complete.
+Use the [installation and upgrade guide](install-and-update.md) for setup, coordinated migration and reader refresh. This document describes durable storage and retrieval; the [changelog](../CHANGELOG.md) records release status.
 
 Version 2.5.0 is an unreleased development change. It adds a source/block/passage store alongside the v2.4 exchange store. The new search interface retrieves historical evidence with exact references; the host agent writes the explanation and checks current facts separately.
 
@@ -12,7 +12,7 @@ Version 2.5.0 is an unreleased development change. It adds a source/block/passag
 - `brief` selects the opening ask, recent evidence and passages containing decision/failure/open-work language. It is a bounded heuristic sample, not a comprehensive summary or a classifier of verified decisions. Head and tail excerpts carry offsets. `--live-git` puts an independently observed branch/commit/worktree state in a separate field.
 - Explicit Claude and Codex JSONL adapters share agent-qualified source IDs. Normalized Git remotes group equivalent SSH/HTTPS clones; common Git directories group local worktrees. `--cwd` can correct absent or unsuitable source metadata.
 - `status`, `sources` and `doctor` expose source coverage, cursors, backlog, last capture time, omitted/malformed counts and integrity checks. Empty search results do not prove absence from unimported histories.
-- One optional local sentence-transformers backend can build vectors and fuse rankings with lexical search. Hooks never load a model. It remains opt-in after mixed results in the [retrieval probe](../benchmarks/README.md).
+- One optional local sentence-transformers backend can build vectors and fuse rankings with lexical search. Hooks never load a model. It remains opt-in after mixed results in the maintainer’s retrieval probes; those measurements do not establish general answer quality.
 
 Use the [install/update checklist](install-and-update.md) for current rollout steps.
 
@@ -35,11 +35,11 @@ Current source adapters exclude reasoning, system/developer messages, tool resul
 
 ## Storage and recovery
 
-Schema 10 preserves available legacy rows and durable data; durable tables were introduced at schema 6. Existing sessions get an independent backfill cursor when their hooks next run; bulk backfill is explicit. The old capped text cannot recover a discarded tail unless its original transcript is still available.
+Schema 12 preserves available legacy rows and durable data; durable tables were introduced at schema 6 and retained revisions at schema 10. Existing sessions get an independent backfill cursor when their hooks next run; bulk backfill is explicit. The old capped text cannot recover a discarded tail unless its original transcript is still available.
 
 Source IDs combine agent and session. Message IDs come from the trace where available, otherwise its byte position. Block IDs derive from source/message identity, content ordinal and kind; repeating an import or rebuilding the same source does not duplicate blocks. Passage offsets refer to the retained redacted text, not original unredacted characters. Byte ranges identify source JSONL records.
 
-Missing originals leave retained evidence readable. Shrinkage and changes to the 256 bytes preceding a saved cursor stop incremental capture and request `--rebuild`; this is an append-continuity check, not a full-file tamper detector. Earlier edits that leave that window unchanged require explicit rebuild. Schema-10 rebuilds stage a complete candidate and publish it atomically at EOF through explicit indexing. Hooks can stage but never publish. Search and compaction recovery use the previous published text until completion; revision-specific get can recover retained older text afterward.
+Missing originals leave retained evidence readable. Shrinkage and changes to the 256 bytes preceding a saved cursor stop incremental capture and request `--rebuild`; this is an append-continuity check, not a full-file tamper detector. Earlier edits that leave that window unchanged require explicit rebuild. Rebuilds stage a complete candidate and publish it atomically at EOF through explicit indexing. Hooks can stage but never publish. Search and compaction recovery use the previous published text until completion; revision-specific get can recover retained older text afterward.
 
 `prune AGENT:SESSION` removes a durable source, chunks, FTS entries and vectors in the same transaction. It leaves original transcripts and legacy exchange rows. Legacy session pruning also removes matching durable sources. `export AGENT:SESSION` emits complete redacted blocks and provenance as `recall-blocks-v1` JSON by default. Add `--include-revisions` for `recall-blocks-v2` with retained revisions and pins. Use `import-export` to restore this format; it is not transcript JSONL.
 
@@ -56,33 +56,15 @@ python3 scripts/recall_memory.py --db /tmp/recall-trial.db search "reason for th
 
 Model files are fingerprinted; a changed model refuses retrieval until rebuilt. Source changes invalidate their vectors, and a build only attaches vectors to the exact text encoded. New passages need another explicit build. Semantic search scans the scoped vector corpus in memory; this is a small-corpus experiment, not a scalable approximate-nearest-neighbor service. No confidence threshold turns retrieved similarity into a factual answer.
 
-## Historical update-window changes after the first revision (2026-09-05, Fable)
+## Validation scope
 
-- Schema 7: `memory_sources` gains `excluded`, `metadata_records`, `unsupported_types`, `generation`, `head_hash`; `memory_blocks` gains `ordinal` and `generation`. Migration is idempotent and tested from schema 6 and from a schema-5 backup.
-- Rebuilds are generation-based and safe when interrupted; edit detection covers the file header and the cursor tail and names the changed window.
-- `doctor` emits one next action per source state; `status` explains each skipped-record counter.
-- `backup`/`restore`/`import-export`/`rescope`/`config`/`install-codex-skill` commands; opt-in Codex import at Claude session start; verbatim compaction recovery on `SessionStart(compact)`.
-- Durable search defaults to a 30-day recency half-life (P12). Redaction regex made linear (P27). Directory imports newest-first.
-- Evidence for every change is in [the plan's evidence log](update-window-plan.md#evidence-log).
+Validation covers migration preservation, complete long-answer pagination, partial
+UTF-8/JSONL recovery, bounded progress, changed/missing sources, agent isolation,
+redaction before FTS, cascade deletion, durable SessionEnd backfill, explicit
+prose/command selection, model changes and capture during embedding. Real-history
+rehearsals use isolated temporary stores; raw histories are not release assets.
 
-## Accepted work and release status
-
-| Work | Status |
-|---|---|
-| Full retained source text; head/tail concern | Implemented; exact retrieval and bounded head/tail brief excerpts; compaction recovery quotes tails |
-| Claude/Codex import, repository identity, provenance | Implemented; explicit Codex import |
-| Briefing and capture diagnostics | Implemented; historical evidence separated from live Git |
-| Retrieval evaluation | 60-question real-history anchor probe; human answer-quality labels remain with the maintainer; fresh synthetic Claude/Codex behavioral checks are recorded separately |
-| Embeddings | One offline backend implemented and tested; kept opt-in |
-| Installed local plugin update | Local schema-10 Code/skill/app-reader installation verified; Desktop Chat and Mac-connected Cowork activation verified; existing Codex connection refresh and older terminal skill reloads remain separate session actions |
-| Blog npm vulnerabilities | Separate dependency branch updates Astro/MDX/sharp/integrations and CI Node; clean install/build and zero-vulnerability audit |
-| Git push / publication | Excluded by user instruction; no push or publication performed |
-
-Validation covers migration with existing v5 rows, complete long-answer pagination, partial UTF-8/JSONL recovery, bounded progress, changed/missing sources, agent isolation, redaction before FTS, cascade deletion, durable SessionEnd backfill, explicit prose/command selection, model changes and capture during embedding. Real Claude/Codex traces are exercised only in isolated temporary stores; raw histories are not committed.
-
-Final local validation of the first revision: 481 tests passed (`python3 -m pytest -q`), and `claude plugin validate` passed. After the update-window changes: 521 tests; see the plan for per-item evidence. The blog branch passed `npm ci`, `npm run build` (13 pages), and a live `npm audit` with zero reported vulnerabilities.
-
-The real-trace smoke run retained 1,540 Claude blocks and 79 Codex blocks, verified exact paginated retrieval, selected eight briefing references, matched the main checkout's repository identity to its worktree, and passed both SQLite and external-content FTS integrity checks. These counts describe that snapshot, not all available histories.
-
-Schema 10 adds [retained revisions and atomic rebuilds](revision-evidence-design.md).
-[Explicit conversation imports](history-import.md) supplement local transcript capture.
+Practical human acceptance and fresh synthetic Claude/Codex behavior checks are
+separate evidence. Neither establishes blind retrieval accuracy or general model
+answer quality. See the [release validation summary](../CHANGELOG.md) and
+[private-session support boundaries](session-privacy-hosts.md).

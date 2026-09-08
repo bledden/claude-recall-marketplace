@@ -7,75 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.0] - Unreleased
 
-**Upgrade instructions:** [Install or update Recall 2.5](docs/install-and-update.md).
-Back up before the first new writer, migrate once to schema 10, update generated
-reader copies, then refresh loaded client connections. New-user setup and
-post-update scope/revision checks are included. Public update availability follows
-publication; an installed plugin label alone does not prove a running reader updated.
-
-- Schema 10: atomic staged rebuild publication, exact retained-revision get through CLI/MCP, three superseded versions per block by default, explicit pins/GC, history-aware export/import and backup validation. Hooks stage without performing the final maintenance transaction.
-- Explicit offline conversation preview/import: selected Claude/ChatGPT text export shapes and rendered-chat snapshots, exact repository scope, branch handling, resource bounds and fail-before-write validation. Real account-export compatibility remains unverified pending a representative export.
-
-
 ### Added
-- Known Claude host bookkeeping and model-fallback notices count as metadata instead of unsupported records; mixed conversation text is preserved and unknown record kinds remain visible. Existing counts update on explicit rebuild.
-- Codex skill installation no longer opens, creates or migrates the memory store; it works independently of SQLite write access.
-- Recovery diagnostics now include scoped registered-source counts by agent. Explicit CLI `index --cwd` pins mappings and refuses silent scope changes, matching foreground capture. Skills preserve coverage, prefer working scoped access routes and read through relevant evidence instead of unconditionally exhausting every block. See [retrieval troubleshooting](docs/retrieval-troubleshooting.md).
-- Exact quote/window checks and optional prior-content-hash verification on CLI/MCP get, with precise Unicode citation offsets and explicit provenance on search/get/brief. These detect misquotation and changed text, not truth or execution success; retained older text is now separately recoverable under P52’s bounded revision policy (P79/P71).
-- Legacy capture skips flagged Claude skill bodies and compaction summaries; `clean-legacy-host SESSION [--apply]` audits/removes proven historical host prompt text without renumbering exchanges or changing replies, commands or annotations (P80/P66).
-- Explicit host repository mapping for foreground capture via `--cwd`, pinned across subsequent imports and refusing implicit movement of existing foreign sources. Two real local Cowork prefixes plus appended records verified; cloud-only app capture remains unsupported (P81/P69).
-- Opt-in local operational diagnostics for MCP readers and independent capture: fixed categories and numeric timings/counts only, no query/history text or network upload, two bounded 1 MiB segments, nonblocking writer coordination and failure isolation. App packaging can explicitly enable it per reader.
-- A local token/context-size benchmark separates tokenizer proxies, returned evidence, static skill/schema overhead and full-history size references; it does not consume the human evaluation packet or claim provider-billed savings.
-- P72 integration follow-up: share agent-aware directory discovery with independent capture, preserve Codex date-tree imports, and pass the chosen adapter to transcript detection. Four further regressions cover both Codex layouts and default/recursive Claude capture.
-- Machine-specific app reader preparer: Desktop chat MCP snippet and local Cowork plugin ZIP, explicit repository scope, absolute Python runtime and no bundled history or capture hooks. Generated launches and actual Desktop Chat/Mac-connected Cowork fixture retrieval are tested; capture and standalone cloud access remain separate. Desktop and plugin connector names are distinct for traceability. Corrected the former unqualified Cowork support and ZIP-only installation claims.
-- CLI `search`/`brief` return the same compact coverage counts as the MCP reader (a 22-source scope carried a 15 KB source listing into Claude Code context on every search); `--full-coverage` restores the listing, and `status`/`sources` keep the detail. A read against a missing store reports `store_missing` (P78).
-- Optional stdlib MCP stdio server for repository-scoped cross-agent search/get/brief/status, with read-only store access, pagination, scope checks and bounded protocol output.
-- Claude records flagged `isMeta` (the rendered body of a skill or slash command) are excluded by policy instead of being retained as the user's words; a compaction summary (`isCompactSummary`) is retained under role `host`, searchable but never quoted by `brief` or compaction recovery as the opening ask or recent context (found on a real compaction receipt, P65).
-- MCP tool errors distinguish the 2-second query budget and a busy store from a store that needs maintenance (P64).
-- Codex skill resolves the actual target repository with explicit `--cwd` and checks source coverage when the desktop task starts in a parent directory (P63).
-- Existing block role metadata is corrected during explicit rebuild, including unchanged Claude host summaries; prior durable metadata needs rebuild to be removed. Existing legacy host prompts require the explicit cleanup described below.
-- `index DIR` sweeps only the main transcripts at the top of a project directory; `--recursive` opts into per-session subdirectories, where subagent transcripts (which carry the parent's sessionId) get their own source key and workflow journals are skipped. A file that claims an already-registered source's identity is refused (`path_conflict`) instead of being read against that source's cursor (P72).
-- Independent foreground capture/refresh of explicitly selected Claude/Codex histories, with fair incremental progress, new-file/append detection and no automatic background-service installation.
-- Complete redacted source blocks with stable references, chunked lexical search, exact paginated retrieval and neighboring-block references. Legacy capped exchanges remain compatible.
-- Explicit, resumable Claude/Codex transcript imports with normalized repository identity across worktrees and remote URL protocols.
-- Cited-briefing evidence selection with a separately observed current Git state.
-- Status/doctor/source pagination, backlog and source-change reporting, durable-source export/prune, and transactionally coupled FTS cleanup.
-- Optional offline sentence-transformers embeddings with model fingerprints, explicit builds and reciprocal-rank fusion. No downloads or embeddings in capture hooks.
-- A private-corpus 60-question anchor evaluation harness and failure-boundary tests. Anchor retrieval is not a human-judged answer-quality score.
+- Durable retained redacted blocks for supported Claude Code and Codex records, passage search, stable block references, exact character-offset retrieval, pagination and neighboring evidence.
+- Atomic staged rebuild publication and bounded retained revisions. Retrieve an exact retained content hash, pin earlier versions, and explicitly collect unpinned history; unavailable revisions fail clearly.
+- Exact quote/window and optional content-hash checks, with explicit historical provenance. These validate retained text and versions, not factual truth or tool execution success.
+- Independent foreground capture/refresh for selected histories, explicit repository mapping and a Codex skill. Optional native Codex hook preparation remains subject to the host's normal trust workflow.
+- Read-only, repository-scoped MCP search/get/brief/status. Separate generated readers support Claude Desktop Chat and Mac-connected Cowork; one task can use multiple shared project readers.
+- Opt-in private Claude Code/Codex root-session controller with native capture, resume and compaction, plus refusal of inherited fork/subagent reader grants. This is supported-reader separation, not same-user OS isolation.
+- Owner-reviewed private conversion/recovery, capture pause/resume, revoke/regrant, deletion, selected excerpt disclosure and validated backup/restore. Restores preserve restrictive control behavior; installation enables none of this automatically.
+- Source freshness and backlog reporting, skipped-record classification, cited briefs, explicit history exports/imports, and shared doctor/restore schema verification.
+- Explicit selected conversation/export and rendered-snapshot import for documented formats. Representative real account-export compatibility remains unverified.
+- Optional offline embeddings and hybrid CLI retrieval using an explicitly supplied local model. Lexical retrieval remains the default; hooks do not download or run models.
+- Opt-in bounded local operational diagnostics and token/context-size benchmarks. No network telemetry, query text or retained history is written to diagnostic events.
 
 ### Changed
-- Search and brief MCP results carry compact coverage counts instead of repeating full per-source diagnostic records. `recall_status` retains source details and pagination; compact counters label the checked page and retain backlog/missing-source warnings.
-- Schema version 6 adds source/block/chunk/vector tables; the existing exchange schema remains intact.
-- Full durable retention resolves the head-versus-tail storage question. Displayed brief excerpts label their source offsets.
-- SessionEnd drains durable backfill as well as the legacy capture cursor.
+- Store schema advances to 12. Use the coordinated backup/migration/runtime-refresh workflow in docs/install-and-update.md.
+- Rebuilds preserve the prior published view until explicit atomic publication. Hooks stage pending work; they do not publish large rebuilds. Repeat indexing or provide a sufficient budget when a source is rebuilding/rebuild_ready.
+- MCP passage reads default to 2,000 characters and zero neighbors; explicit larger windows and pagination remain available.
+- Search/brief carry compact scoped coverage; full source details remain available through status/sources and the CLI's --full-coverage option.
+- Codex skills use the actual target repository, preserve coverage warnings and reuse successful access routes. Skill installation no longer opens or migrates SQLite.
+- Semantic vectors use validated packed little-endian float32 storage, with explicit model/format/dimension metadata.
+- App upgrade instructions distinguish source packages from generated upload ZIPs and require real host verification after reader processes reload.
 
-### Added (update-window work, same day)
-- Skipped-record classification per source (`excluded_by_policy` / `metadata_records` / `unsupported` with type names / `malformed`) and a `doctor` that emits one actionable next step per source state.
-- Generation-based rebuilds: `index --rebuild` rescans from byte 0 in a new generation. Messages the rescan has not reached keep their old text until end of file, when anything the file no longer contains is deleted; a message whose id is unchanged but whose text changed is replaced when the rescan reaches it. An interrupted rebuild resumes on the next `index`. Header (first 256 bytes) and tail edit detection name the window that changed.
-- `backup DEST` / `restore SRC --yes` (SQLite backup API; migrations re-run after restore) and `import-export FILE` for `recall-blocks-v1` exports.
-- `rescope AGENT:SESSION --cwd DIR` to correct a source's repository scope (pinned against later index passes; `--auto` unpins); `config KEY VALUE` for global opt-ins in `~/.claude/context-recall/settings.json`.
-- Opt-in Codex capture: `config codex_import on` imports new Codex rollouts (newest first, 4 s budget) at every Claude session start; `install-codex-skill` writes a Codex skill pointing at this plugin so Codex can query the same store.
-- Verbatim compaction recovery: after a compaction the session-start hook injects the opening ask and the tails of the last three text blocks from the durable store, each cited with `get <block_id> --start N`, capped at 3,500 chars and never repeated for an unchanged state; the legacy preview nudge remains the fallback.
-- `memory_blocks.ordinal` keeps a turn's text/tool/text order for neighbours and exports. Directory imports process newest files first.
+### Fixed
+- Quadratic long-session capture lookups and pathological credential-redaction inputs that could exhaust hook budgets.
+- Store-path override inconsistencies in hooks and legacy migration paths.
+- Incomplete or inconsistent backups being accepted for restore; staging now validates expected tables, columns, indexes, triggers, FTS content and foreign keys before touching the target.
+- Host-injected wrappers and rendered skill bodies being presented as user context; embedded-NUL, whitespace and contiguous-excerpt offset defects.
+- Subagent transcript discovery colliding with parent cursors, workflow journals treated as transcripts, and silent source-path/repository reassignment.
+- Invalid legacy vector values aborting migrations and missing vector-format/dimension metadata.
+- Cross-agent legacy prune namespace collisions.
+- Misleading MCP maintenance errors for query budgets or busy stores, missing-store error classification, and excessive repeated coverage output.
 
-### Changed (update-window work)
-- Durable search defaults to a 30-day recency half-life (`--half-life 0` for pure relevance): +18 points hit@5 on the development split of the retrieval probe.
-- Schema version 9: version 7 adds the columns above; version 8 adds the `memory_blocks(source_key, message_key)` index; version 9 adds the `(source_key, generation, seq)` index, `memory_sources.scope_pinned`, and packed little-endian float32 vectors (pre-9 JSON vectors are converted in place, invalid rows dropped). Idempotent migration tested from schema 6, 7 and a schema-5 backup.
-
-### Fixed (update-window work)
-- Codex host compaction records are classified as deliberately excluded summaries/replacement histories instead of unsupported source formats; original conversation blocks remain the evidence. Existing stored skip counts change on an explicit rebuild.
-- The frozen evaluation runner validates source hashes and both agents’ exact labels before retrieval, gates human-review packets on recorded review, and reports unsupported legacy Codex input and inapplicable exact scores honestly.
-- Compaction excerpts also filter indented or mixed host wrappers; a tail stays within its final prose segment and retains the exact character offset.
-- **Redaction could hang the capture hook.** The v2.4.0 generic credential pattern backtracked quadratically on long no-space runs (20k chars: 7 s; 80k: hang) and ran on uncapped text. Every quantifier is bounded and every whitespace run is followed by a required token; a second quadratic delimiter (`\s*["']?\s*`, 16k spaces: 1 s, 64k: hang) was found in review the same day and fixed too, with adversarial whitespace/quote cases in the tests. 400k chars redact in well under a second. v2.4.0 remains affected until a hotfix is published.
-- `restore` of an older-schema backup left the store without durable tables.
-- `restore` (review R3-01/R3-04): a backup missing a derived object such as `memory_fts` passed SQLite's integrity check and replaced the store; the migrated staging copy is now checked for every required table, column, index and FTS index (missing or inconsistent objects reject the backup with the target untouched; repair is an explicit doctor operation), and literal backup names containing `?`, `#`, `%` or spaces are opened as files, not URI syntax. `doctor` reports the same schema check.
-- Vector migration (R3-02/R3-03): a pre-9 JSON vector with a value outside float32 range aborted the migration and wedged every store open; strings and objects were reinterpreted as vectors. Only non-empty arrays of finite float32 numbers convert, everything else is dropped as invalid derived data, and the semantic configuration receives its format and dimension during the same migration (dimension NULL for an empty index; a model's first valid row fixes its dimension, disagreeing rows are dropped).
-- Compaction recovery (R3-05): SQLite text slicing stops at an embedded NUL, which dropped the tail of such a block and mis-cited its offset; blocks containing NUL are re-read whole and sliced in Python.
-- Restore/doctor schema check (integration verification): the check is now derived from a pristine store (every table, column, index and trigger) and both FTS indexes are verified against their content tables, so a backup with a dropped runtime column, a dropped capture trigger, or an FTS index emptied with `delete-all` is rejected; `doctor --repair` recreates derived objects and rebuilds FTS from content.
-- `brief` and compaction recovery no longer present host-injected wrappers (Codex `<recommended_plugins>`, Claude Code `<system-reminder>` and slash-command echoes) as the opening ask or as evidence; a record that mixes a wrapper with the user's words is excerpted from the words, with exact offsets.
-- `install-codex-skill` defaults to `~/.agents/skills` (the location current Codex documentation lists for user skills); `--skills-dir ~/.codex/skills` for older hosts.
-- **Capture slowed down quadratically on long sessions.** The durable indexer looked up each new message with a query that could only use the `source_key` prefix of its index, so every message scanned all blocks of the session. On a 328 MB transcript a 2 MB hook pass took 2 s (7 s worst, against the 10 s hook timeout); see `benchmarks/capture_budget.py` for the before/after numbers.
-- The `SessionEnd` and compaction-recovery hooks passed the default path explicitly and so ignored a `RECALL_DB` override; every hook and script now resolves the store the same way (regression test runs each entry point under a throwaway HOME).
+### Upgrade and validation
+- Public release ZIPs and managed marketplace copies exclude internal update plans/history and retired design plans; user guides remain included.
+- Follow docs/install-and-update.md and PRIVACY.md. Do not mix obsolete writers with private-session policies or describe a raw downgrade as privacy-preserving.
+- Rebuild each generated app reader. Replace Cowork uploads, retain the MCP component, then quit/reopen Claude at an idle boundary and verify in a fresh task; Replace alone retained old Python processes in the tested app.
+- Use the canonical app preparer's ZIP with its manifest at archive root. The local activation repacking error was corrected before upload; actual extracted ZIPs are now part of release QA.
+- Candidate validation: 893 tests (including three release-packaging checks), 129 packaged checks, real-backup migration preservation, native lifecycle/access tests, and fresh Codex/Claude/Desktop/Cowork retrieval checks. Practical human acceptance is recorded without a blind/general accuracy claim.
 
 ## [2.4.0] - 2026-09-05
 

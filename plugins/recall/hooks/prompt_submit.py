@@ -529,6 +529,14 @@ def index_transcript(conn, session_id: str, transcript_path: str,
     rolling window and runs auto-highlight detection on new exchanges. The
     caller commits. Returns the newly inserted exchange dicts.
     """
+    from recall_privacy import mode, capture_identities
+    if not conn.in_transaction:
+        conn.execute('BEGIN IMMEDIATE')
+    identities = {'claude:' + session_id}
+    if transcript_path and os.path.isfile(transcript_path):
+        identities = capture_identities(conn,transcript_path,'claude',session_id)
+    if any(mode(conn,key) == 'off' for key in identities):
+        return []
     now = now or datetime.now(timezone.utc).isoformat()
     insert_session(conn, session_id=session_id, project_path=project_path,
                    project_hash=project_hash, started_at=now,

@@ -129,6 +129,10 @@ def parser():
     q.add_argument('key',nargs='?'); q.add_argument('value',nargs='?')
     q=sub.add_parser('install-codex-skill',help='Write a Codex skill that points at this plugin\'s recall_memory.py (explicit opt-in)')
     q.add_argument('--skills-dir',default='~/.agents/skills',help='Codex user skills root (current docs: ~/.agents/skills; older hosts read ~/.codex/skills)')
+    q=sub.add_parser('capture-policy',help='Owner control: stop future capture without deleting existing memory')
+    q.add_argument('source',help='Exact agent:session identity, including before its first import')
+    q.add_argument('--mode',choices=['shared','off'],help='Set mode; omit to inspect')
+    q.add_argument('--allow-backfill',action='store_true',help='Explicitly allow importing history written while capture was off when re-enabling shared capture')
     q=sub.add_parser('rescope',help='Recompute a source\'s repository identity from a directory (correction path)')
     q.add_argument('source',help='Exact agent:session identifier')
     q.add_argument('--cwd',help='Directory whose repository identity this source should carry (pins it)')
@@ -290,6 +294,12 @@ def run(args, conn):
         target.parent.mkdir(parents=True,exist_ok=True)
         target.write_text(CODEX_SKILL.replace('SCRIPT',str(script)),encoding='utf-8')
         return {'written':str(target),'note':'Codex loads skills from its own skills root; verify in a Codex session that /recall appears.'}
+    if cmd=='capture-policy':
+        from recall_privacy import mode, set_mode
+        if args.mode:
+            return set_mode(conn,args.source,args.mode,args.allow_backfill)
+        return {'source':args.source,'mode':mode(conn,args.source),
+                'existing_memory':'unchanged','session_only':'unavailable: requires verified owner binding'}
     if cmd=='rescope':
         if conn.execute('SELECT 1 FROM memory_sources WHERE source_key=? AND rebuild_in_progress=1',(args.source,)).fetchone():
             raise ValueError('Finish or restart the pending rebuild before rescoping its published history')
@@ -351,7 +361,9 @@ def run(args, conn):
                     source.backup(staging)
                 finally:
                     staging.close()
-                staged=get_connection(Path(staging_path))   # runs the migrations on the copy
+                # A backup's journal belongs to its original location. Validate
+                # content first; the locked target policy is merged below.
+                staged=get_connection(Path(staging_path), policy_recovery=False)
                 try:
                     # R3-01: page integrity is not schema completeness. A file that still
                     # lacks any required table, column, index or working FTS index after
@@ -364,7 +376,10 @@ def run(args, conn):
                     staged.commit()
                     if staged.execute('PRAGMA integrity_check').fetchone()[0]!='ok':
                         raise ValueError('Backup did not survive migration; target left untouched')
-                    staged.backup(conn)
+                    from recall_privacy import preserve_restore_policy, journal_lock
+                    with journal_lock(conn):
+                        preserve_restore_policy(conn, staged)
+                        staged.backup(conn)
                 finally:
                     staged.close()
         finally:

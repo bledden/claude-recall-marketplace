@@ -34,7 +34,9 @@ DB_BUSY_TIMEOUT_MS = 5000
 #   v5: exchanges.tool_text (commands/files Claude touched) + FTS column (rebuild)
 #   v6: durable memory tables (sources/blocks/chunks/vectors)
 #   v7: memory_sources skipped-record classification columns
-SCHEMA_VERSION = 10
+# v12 is a reader compatibility boundary: cooperative leases and private-route
+# checks must run before any shared retrieval, even though table DDL is unchanged.
+SCHEMA_VERSION = 12
 
 # ---------------------------------------------------------------------------
 # Schema SQL
@@ -134,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_invocations_ts ON invocations(ts);
 # Connection & schema
 # ---------------------------------------------------------------------------
 
-def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
+def get_connection(db_path: Optional[Path] = None, *, private_owner=None, policy_recovery=True, maintenance_lease=None) -> sqlite3.Connection:
     """Return a WAL-mode SQLite connection with row_factory=sqlite3.Row.
 
     Creates the database directory and schema if they do not exist.
@@ -155,33 +157,47 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     if db_dir:
         os.makedirs(db_dir, mode=0o700, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout={}".format(DB_BUSY_TIMEOUT_MS))
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA synchronous = NORMAL")
+    from recall_access import connect
+    conn = connect(db_path, maintenance_lease=maintenance_lease)
+    try:
+        conn.row_factory = sqlite3.Row
+        from recall_privacy import check_private_owner
+        check_private_owner(conn, private_owner)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout={}".format(DB_BUSY_TIMEOUT_MS))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA synchronous = NORMAL")
 
-    # Only run schema DDL if tables don't exist yet (avoids parsing 15 DDL
-    # statements on every connection — saves ~2ms per prompt)
-    row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='sessions'"
-    ).fetchone()
-    if row is None:
-        conn.executescript(_SCHEMA_SQL)
-        from memory_store import initialize
-        initialize(conn)
-        # A fresh store is already at the current schema — stamp it so no
-        # migration (e.g. the v4 FTS rebuild) runs needlessly.
-        conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
-        conn.commit()
+        # Only run schema DDL if tables don't exist yet (avoids parsing 15 DDL
+        # statements on every connection — saves ~2ms per prompt)
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='sessions'"
+        ).fetchone()
+        if row is None:
+            conn.executescript(_SCHEMA_SQL)
+            from memory_store import initialize
+            initialize(conn)
+            from recall_privacy import initialize as initialize_privacy
+            initialize_privacy(conn)
+            # A fresh store is already at the current schema — stamp it so no
+            # migration (e.g. the v4 FTS rebuild) runs needlessly.
+            conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
+            conn.commit()
 
-    _apply_migrations(conn)
+        _apply_migrations(conn)
+        if policy_recovery:
+            from recall_privacy import recover_journal, check_shared_visibility
+            recover_journal(conn)
+            if maintenance_lease is None:
+                check_shared_visibility(conn)
 
-    return conn
+        return conn
+    except BaseException:
+        conn.close()
+        raise
 
 
-def get_read_connection(db_path=None) -> sqlite3.Connection:
+def get_read_connection(db_path=None, *, private_owner=None) -> sqlite3.Connection:
     """Open an existing current store without WAL changes, migrations or counters.
 
     Use normal mode=ro, never immutable: concurrent committed WAL data must remain
@@ -189,13 +205,17 @@ def get_read_connection(db_path=None) -> sqlite3.Connection:
     on those is reported rather than bypassed with a stale immutable snapshot.
     """
     path = Path(db_path or os.environ.get('RECALL_DB') or DB_PATH).expanduser().resolve(strict=True)
-    conn = sqlite3.connect(path.as_uri()+'?mode=ro', uri=True, timeout=0.5)
+    from recall_access import connect
+    conn = connect(path, read_only=True)
     try:
         conn.row_factory = sqlite3.Row
         conn.execute('PRAGMA query_only=ON')
         conn.execute('BEGIN')
+        from recall_privacy import check_private_owner, check_shared_visibility
+        check_private_owner(conn, private_owner)
         if conn.execute('PRAGMA user_version').fetchone()[0] != SCHEMA_VERSION:
             raise ValueError('Store schema differs from this Recall version. Run the explicit local migration/doctor workflow with write access first.')
+        check_shared_visibility(conn)
         return conn
     except BaseException:
         conn.close()
@@ -212,7 +232,9 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
     a fresh or pre-versioning DB only needs to stamp the version.
     """
     current = conn.execute("PRAGMA user_version").fetchone()[0]
-    if current >= SCHEMA_VERSION:
+    if current > SCHEMA_VERSION:
+        raise ValueError("Store schema is newer than this writer; use the matching Recall version")
+    if current == SCHEMA_VERSION:
         return
     if current < 3:
         # v3: invocation counter that powers `/recall usage`.
@@ -248,6 +270,9 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
     if current < 10:
         from memory_store import initialize
         initialize(conn)
+    if current < 11:
+        from recall_privacy import initialize as initialize_privacy
+        initialize_privacy(conn)
     conn.execute("PRAGMA user_version = {}".format(SCHEMA_VERSION))
     conn.commit()
 
@@ -668,7 +693,9 @@ def search_exchanges_global(conn: sqlite3.Connection, query: str,
 
 def _prune_session_no_commit(conn: sqlite3.Connection, session_id: str) -> None:
     """Delete a session's data without committing. Caller owns the transaction."""
-    conn.execute('DELETE FROM memory_sources WHERE session_id=?', (session_id,))
+    # This legacy API takes a Claude session ID. Another adapter may reuse the
+    # same bare ID; namespacing must also hold on destructive maintenance paths.
+    conn.execute("DELETE FROM memory_sources WHERE agent='claude' AND session_id=?", (session_id,))
     _delete_fts_rows(conn, session_id)
     conn.execute("DELETE FROM tags WHERE session_id = ?", (session_id,))
     conn.execute("DELETE FROM highlights WHERE session_id = ?", (session_id,))

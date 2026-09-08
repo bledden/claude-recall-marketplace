@@ -1,7 +1,9 @@
 # Session privacy: implementation scope and validation
 
-Prepared September 7, 2026 against main `608bec9`. **Design only: these modes
-are not implemented or enabled.** The maintainer requested them for the current
+Prepared September 7, 2026; updated in the isolated `astra/session-privacy` candidate.
+**Not enabled in the installed runtime.** Capture suppression and an internal
+private-store backend and reviewed internal conversion are implemented. Native
+launch/resume/fork behavior and the remaining transition controls are still gates. See [host/candidate status](session-privacy-hosts.md). The maintainer requested them for the current
 update window. P88–P93 in the total plan track completion before publication.
 
 ## What users should be able to choose
@@ -63,7 +65,7 @@ If the host cannot bind a reader to one conversation, report **Session-only
 unavailable on this connection**. A shared app connector is not a private-session
 connector simply because it has a different display name.
 
-## Current gaps confirmed in code
+## Gaps that motivated the design (installed shared runtime)
 
 - `recall_mcp.py` fixes `repo_id` at launch and checks it for source filters and
   direct current/revision reads. It has no authenticated conversation principal.

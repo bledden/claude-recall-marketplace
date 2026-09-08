@@ -1,6 +1,6 @@
 # Install or update Recall 2.5
 
-Recall 2.5 uses **store schema 10**. Install the code first, migrate the intended
+Recall 2.5 uses **store schema 12**. Install the code first, migrate the intended
 store once, then refresh every client that reads it. Restarting an app before
 installing the new files can leave it running the old reader. The version label
 alone does not prove which code an already-running process loaded.
@@ -17,7 +17,7 @@ and can lag the Recall marketplace. Do not uninstall a marketplace to refresh it
 | Codex skill | Run `install-codex-skill` from a stable Recall directory | Rerun installer from the new directory/version; start a context that discovers the refreshed skill | Explicit import or foreground watcher; installing a skill starts neither |
 | Codex MCP | Add one repository-scoped stdio server | Update its script path if needed, then Settings → MCP servers → Restart; restart the client if its loaded connection remains stale | Separate capture process |
 | Claude Desktop Chat | Generated Desktop MCP configuration | Regenerate the reader, update its configuration/path, quit and reopen Claude | Deliberate import/snapshot; no automatic Chat capture |
-| Cowork connected to a Mac | Generated machine-specific plugin ZIP | Upload the new ZIP under the same plugin name, choose Replace, keep its MCP component enabled; use a fresh task | Explicit selected local transcript import/watch, where available |
+| Cowork connected to a Mac | Generated machine-specific plugin ZIP | Upload the new ZIP under the same plugin name, choose Replace, keep its MCP component enabled, quit/reopen Claude after active tasks finish, then use a fresh task | Explicit selected local transcript import/watch, where available |
 
 Official host instructions: [Claude Code plugin updates and reload](https://code.claude.com/docs/en/discover-plugins),
 [Codex MCP configuration and Restart](https://learn.chatgpt.com/docs/extend/mcp).
@@ -137,7 +137,7 @@ python3 /path/to/new-recall/scripts/recall_memory.py --db /path/to/recall.db doc
 ```
 
 It migrates and checks the store; require `sqlite_check: "ok"`, `fts_check: "ok"`,
-and `schema_check: "ok"`. Confirm schema 10 with the read-only version command
+and `schema_check: "ok"`. Confirm schema 12 with the read-only version command
 in Troubleshooting below (doctor does not return a schema-version field). Doctor requires
 write access and records an invocation even without `--repair`. A new capture
 hook can also migrate automatically; the explicit sequence above lets you check
@@ -147,7 +147,7 @@ reader error.
 Migration preserves available legacy and durable data. It does not reconstruct
 previously discarded text or automatically import all old sessions. Original
 transcripts are needed for full durable backfill. Existing schema-9 sources do
-not need a blanket rebuild merely to upgrade to schema 10.
+not need a blanket rebuild merely to upgrade to schema 12.
 
 ### 3. Update every reader copy and refresh its loaded process
 
@@ -164,7 +164,11 @@ not need a blanket rebuild merely to upgrade to schema 10.
   other settings. Keep its unpacked directory in place. Quit/reopen Claude.
   Separately upload the new generated ZIP in Customize → Plugins, choose
   **Replace** for the same name, and keep the local MCP component enabled.
-  Use a fresh Mac-connected Cowork task. Changing Desktop's directory does not
+  After all uploads are replaced and running tasks finish, quit/reopen Claude
+  again if needed, then use a fresh Mac-connected Cowork task. Replacement alone
+  retained old reader processes in the tested app; a fresh task alone did not
+  reload them. Use the generated ZIP directly, with its manifest at archive root.
+  Changing Desktop's directory does not
   replace the already-uploaded plugin. Do this for each configured repository.
 
 Resume the explicitly configured capture processes afterward. If a source needs
@@ -182,7 +186,7 @@ In each configured surface:
    coverage, with no schema error. This is scoped; CLI `status` is global.
 2. Search a known distinctive phrase with `limit: 1`.
 3. Get that hit using its `block_id`, **`start: start_char`**, `revision: content_hash`,
-   and a window large enough for the short exact `quote` (the default 8,000-character
+   and a window large enough for the short exact `quote` (the default 2,000-character
    get window covers a normal search passage; a 200-character window may not). Require
    `revision_requested: true` and `citation_check.valid: true`; cite the returned
    `quote_start`/`quote_end`. Offset 0 can exclude a quote found deep inside a block.
@@ -219,14 +223,22 @@ with sqlite3.connect(p.as_uri() + '?mode=ro', uri=True) as c:
 PY
 ```
 
-Compare it with `SCHEMA_VERSION = 10` in the `scripts/db.py` actually configured
+Compare it with `SCHEMA_VERSION = 12` in the `scripts/db.py` actually configured
 for the reader. Older readers may suggest doctor for either direction of mismatch.
 An MCP protocol `serverInfo.version` or plugin display label is not a schema check.
 
 ## Rollback
 
+If capture policies or private sessions are active, **do not downgrade to the old
+runtime or restore an old shared store without the current suppression journal**.
+Older schema-10 writers do not implement these protections. Keep the matching
+current runtime for supported restore, or leave the store stopped. See
+[private-session recovery](private-sessions.md#backups-updates-and-rollback).
+The ordinary pre-upgrade rollback below applies only before privacy is enabled.
+
+
 Keep the pre-upgrade backup and old installation together. Downgrading files alone
-does not undo schema 10 and can break old readers. Stop all consumers before a
+does not undo schema 12 and can break old readers. Stop all consumers before a
 rollback, preserve a fresh backup of the current store, and restore the
 pre-upgrade store with its matching old runtime. Changes captured after that
 backup are not in it. Recall's current `restore` validates and migrates the staging
@@ -236,3 +248,12 @@ Do not delete the only copy of new history merely to make an older plugin start.
 For missing recent history, parent-directory scope or repeated sandbox errors,
 see [retrieval troubleshooting](retrieval-troubleshooting.md). Updating a skill or
 reader does not start ongoing Codex capture or automatically map older sources.
+
+## Optional private coding sessions
+
+Updating ordinary readers does not enable session privacy. The dedicated
+[start/resume and owner-control workflow](private-sessions.md) is an explicit opt-in.
+Desktop Chat/Cowork repository readers remain shared. Keep access leases, private
+control records and suppression journals with operational stores; never delete them
+to bypass a migration or maintenance refusal. No administrator permission or Full
+Disk Access is required by Recall; same-user raw file access is outside its boundary.

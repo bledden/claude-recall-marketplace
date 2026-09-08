@@ -1,8 +1,11 @@
-<!-- Durable-memory work on feat/durable-memory; not yet published. -->
+> **Release candidate:** Recall 2.5.0 (store schema 12) is built and locally activated but not yet
+> publicly released. Schema 12 adds opt-in private coding sessions and reviewed memory controls;
+> existing sessions stay shared unless you convert one. Read the
+> [private-session workflow and limits](docs/private-sessions.md) before enabling it.
 
 # Claude Recall Plugin v2.5.0 (unreleased)
 
-[Current update-window plan](docs/update-window-plan.md): remaining product work, historical deferrals, integration and release status.
+See the [installation and upgrade guide](docs/install-and-update.md) for setup and the [changelog](CHANGELOG.md) for release status.
 
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that persists conversation context across sessions, `/clear` commands, and compaction events. It adds cross-session search, tagging, highlight sharing between sessions, and observability.
 
@@ -19,7 +22,9 @@ Claude Code ships with `/recap`, `/resume`, and a `memory/` directory. Recall is
 - **Cross-project full-text search (FTS5).** Native `/recap` and `/resume` operate within the current session/project. Recall indexes every exchange into SQLite FTS5 and searches this session (`search`), every session of this repository (`--all`) or every repository (`--global`) — including past, closed sessions. Since 2.5 the default search reads the durable store of complete text; `--legacy` reads the capped exchange rows.
 - **Tagging.** Apply manual tags to sessions or individual exchanges, plus automatic keyword extraction, then query them across projects (`/recall tag`, `/recall tags`, `/recall search --tag`). The native `memory/` directory is freeform notes, not a queryable tag index.
 - **Highlight & connection sharing between parallel sessions.** Link two live sessions and share findings as lightweight highlights delivered to a connected session's inbox (`/recall connect`, `/recall highlight`, `/recall inbox`). Native Claude Code has no mechanism to push a finding from one session to another.
-- **The exact commands Claude ran.** Tool calls (shell commands, files edited, URLs fetched) are indexed alongside the prose, so "how did we spin up that pod" returns the real command line from the real session, not a reconstruction.
+- **The tool requests recorded in the session.** Shell commands, file edits and fetched URLs are
+  indexed alongside the prose, so "how did we spin up that pod?" is answerable. A recorded request
+  shows the intended arguments; it is not proof the tool ran or succeeded.
 
 If you only need to re-anchor within the current session, native `/recap` / `/resume` may be enough. Recall is for cross-session, cross-project retrieval, tagging, and sharing.
 
@@ -44,7 +49,7 @@ For current setup, use the steps below and verify discovery in the client you us
 ## Installation
 
 **New users and upgraders:** follow the [2.5 install/update checklist](docs/install-and-update.md)
-for schema-10 backup/migration, client-specific refresh steps, and a working
+for schema-12 backup/migration, client-specific refresh steps, and a working
 search/get check. Installing the Code plugin alone does not update app readers.
 
 ### Claude Desktop chat and Cowork
@@ -602,14 +607,14 @@ claude-recall-plugin/
 │   ├── manage_sessions.py           # Session list, prune, export, stats
 │   ├── fetch_exchanges.py           # Fetch exchanges by query
 │   └── show_index.py                # Paginated index display
-├── tests/                          # 680 tests: unit + integration + skill evals + external-review regressions
+├── tests/                          # Unit + integration + skill evals + external-review regressions
 │                                    #   + stress (scale/concurrent/clear/sharing)
 │                                    #   run with `python3 -m pytest -q` (see pytest.ini)
 ├── pytest.ini                      # Collects test_*.py AND stress_test_*.py
 ├── docs/
-│   └── superpowers/
-│       ├── specs/                   # Design specifications
-│       └── plans/                   # Implementation plans
+│   ├── install-and-update.md        # Setup and coordinated upgrades
+│   ├── private-sessions.md          # Opt-in workflow and limits
+│   └── claude-app.md                # Generated Desktop/Cowork readers
 ├── README.md
 ├── CHANGELOG.md
 ├── PRIVACY.md
@@ -624,7 +629,7 @@ claude-recall-plugin/
 ```bash
 cd claude-recall-plugin
 
-# Full suite — unit, integration, and stress (680 tests)
+# Full suite — unit, integration, and stress
 # pytest.ini collects both test_*.py and stress_test_*.py
 python3 -m pytest -q
 ```

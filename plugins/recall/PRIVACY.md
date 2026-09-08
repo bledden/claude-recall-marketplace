@@ -150,3 +150,25 @@ conversation ID and repository directory, retains supported visible text and app
 the normal redaction policy. New redaction rules can change imported hashes.
 Snapshots do not prove authorship or completeness, and no account request, network
 fetch, upload, credential access, background capture or telemetry is added.
+
+## Opt-in private coding sessions (schema 12 candidate)
+
+The [dedicated native workflow](docs/private-sessions.md) separates supported Recall
+readers by root session and keeps private content out of shared indexes and counts.
+It does not separate arbitrary processes running as the same OS user. It requires
+no administrator access or Full Disk Access. Shared Desktop Chat/Cowork connectors
+are not conversation-bound private readers.
+
+Owner-only profiles and control records store source identities, repository paths,
+capture/access state and a revocable connection generation. They are local files,
+not telemetry. No permanent server, network listener, credential store or remote
+history synchronization is added. Native clients still contact their configured
+model provider when the user runs a coding turn. Exact excerpts are shared only
+after a reviewed fingerprint; that disclosure does not enable general shared capture.
+
+Revocation affects subsequent supported reads. It cannot retract text already in
+a model context, native transcripts, other session copies, exports, backups or
+filesystem snapshots. Deletion keeps suppression and an empty tagged store; it
+does not promise forensic erasure. Private restore validates owner/scope/schema
+and leaves access revoked and capture off. Do not downgrade active privacy to
+schema-10 writers, which do not implement this control protocol.

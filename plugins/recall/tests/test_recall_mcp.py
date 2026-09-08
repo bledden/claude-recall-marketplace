@@ -194,3 +194,13 @@ def test_oversized_result_is_a_bounded_tool_error(corpus,monkeypatch):
     protocol,_=ready(service)
     result=protocol.handle({'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':'recall_status'}})
     assert result['result']['isError'] and len(json.dumps(result))<500
+
+
+def test_default_read_is_bounded_and_can_recover_the_remaining_passage(corpus):
+    path,ids=corpus;service=RecallService(path,'repo-a')
+    result=service.call('recall_get',{'block_id':ids['accepted']})
+    assert len(result['text'])==2000 and not result['neighbors']
+    next_page=service.call('recall_get',{'block_id':ids['accepted'],'start':result['next_start']})
+    with read_connection(path) as c:
+        full=memory.get_block(c,ids['accepted'],max_chars=4000)['text']
+    assert result['text']+next_page['text']==full

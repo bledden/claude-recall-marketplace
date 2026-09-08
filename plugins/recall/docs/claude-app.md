@@ -38,6 +38,18 @@ Sources checked September 6, 2026. Actual tool discovery takes precedence over
 assuming capability from a surface name; retain the distinction between running
 a local server and reaching it through a device bridge.
 
+## Repository readers are not private sessions
+
+Names such as `recall-project` and `recall-triton-msl` identify readers filtered
+for different repositories in the shared store. A conversation with both readers
+enabled can consult both projects. A refusal when the wrong reader receives a
+block ID verifies that reader's configured filter; it does not make the project
+private or prevent the same conversation from using its matching reader.
+
+Installing these readers does not convert any session to private, move its
+history or change capture policy. Session-private memory is a separate explicit
+workflow described in [private sessions](private-sessions.md).
+
 ## Prepare a reader for one indexed repository
 
 Run on the Mac, using an existing schema-compatible store and the actual project
@@ -53,7 +65,7 @@ python3 /path/to/recall/scripts/prepare_claude_app.py \
 Python 3.9+ with SQLite FTS5 is required. The preparer records the absolute Python
 executable; `--python /absolute/path/to/python3` selects another installed runtime.
 It checks that the store has sources in the selected scope, freezes that scope
-into the launch arguments, copies the six stdlib reader modules, and emits:
+into the launch arguments, copies the required stdlib reader modules, and emits:
 
 - `desktop-config-snippet.json`, for Desktop chat;
 - `recall-reader.zip`, with `.mcp.json`, a retrieval-only skill and the manifest
@@ -92,6 +104,18 @@ chat entry. Use the plugin-named reader when available and record the actual
 connection used. If local MCP is disabled or no device reader is exposed, report
 that explicitly rather than creating an empty sandbox store. Do not substitute
 `localhost` as a remote connector URL or expose the database via a public tunnel.
+
+For an update, upload the newly generated ZIP under the same plugin name,
+choose **Replace**, and retain its MCP component. After running tasks finish,
+quit and reopen Claude before testing a fresh Mac-connected Cowork task. In app
+1.46388.4, replacing an upload and starting a new task still used old loaded
+reader processes until the app restarted. A schema mismatch after replacement
+can therefore be stale code; do not repeatedly migrate the already-current store.
+
+Use the preparer's ZIP directly. Its `.claude-plugin/plugin.json` and `.mcp.json`
+are at the archive root. Zipping the outer output directory adds an invalid extra
+folder. Validate/extract the actual upload ZIP and launch its reader during QA;
+testing only the adjacent unpacked directory misses packaging mistakes.
 
 Cowork also accepts marketplace repositories; the old README's “ZIP only” claim
 was incorrect. A generic Code-plugin install still does not supply the explicit
@@ -150,9 +174,8 @@ VM store and falsely appear to share host memory.
    actual source import and later retrieval prove it. A plugin checkmark alone
    does not prove either capture or retrieval.
 
-P67–P70 in the update-window plan track the prepared integration, live app gates,
-capture boundaries and cloud-mode follow-through. None of these checks authorizes
-publication or counts as P10's human retrieval evaluation.
+These checks validate connector behavior and capture boundaries. They do not
+establish broad model answer quality or replace human review of retrieved evidence.
 
 For conversations lacking an accessible local transcript, use the explicit
 [visible-message snapshot or selected export import](history-import.md). This

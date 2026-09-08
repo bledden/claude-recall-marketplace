@@ -19,7 +19,7 @@ import memory_store as memory
 from recall_mcp import RecallService
 
 ROOT = Path(__file__).resolve().parents[1]
-READER_FILES = ('recall_mcp.py', 'memory_store.py', 'db.py', 'utils.py', 'recall_diagnostics.py', 'memory_revisions.py')
+READER_FILES = ('recall_mcp.py', 'memory_store.py', 'db.py', 'utils.py', 'recall_diagnostics.py', 'memory_revisions.py', 'recall_privacy.py', 'recall_access.py')
 APP_SKILL = '''---
 name: recall
 description: Recover previous decisions, commands and discussions from the connected Recall repository. Use when earlier work matters, the user asks what was decided last time, or context needs recovery.

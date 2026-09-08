@@ -15,6 +15,8 @@ def export_source(conn, source_key, include_revisions=False):
             'blocks':[dict(r) for r in conn.execute('SELECT * FROM memory_blocks WHERE source_key=? ORDER BY seq,ordinal,id',(source_key,))],
             'unpublished_rebuild_excluded':bool(row['rebuild_in_progress']),
             'includes_revisions':include_revisions}
+    from recall_privacy import export_policy
+    result['capture_policy'] = export_policy(conn, source_key)
     if include_revisions:
         result['revisions']=[dict(r) for r in conn.execute('SELECT * FROM memory_revisions WHERE source_key=? ORDER BY revision_order',(source_key,))]
     return result
@@ -23,6 +25,9 @@ def export_source(conn, source_key, include_revisions=False):
 def validate(data):
     if not isinstance(data,dict) or data.get('format') not in ('recall-blocks-v1','recall-blocks-v2'):
         raise ValueError('Not a recall-blocks-v1/v2 export')
+    policy=data.get('capture_policy', {'version':1,'mode':'shared'})
+    if not isinstance(policy,dict) or policy.get('version')!=1 or policy.get('mode') not in ('shared','off'):
+        raise ValueError('Unsupported capture policy in export')
     src=data.get('source')
     if not isinstance(src,dict) or any(not isinstance(src.get(k),str) or not src[k] for k in ('source_key','session_id','agent','path','project_path','repo_id')):
         raise ValueError('Export has invalid source metadata')
@@ -60,7 +65,17 @@ def validate(data):
 
 
 def import_source(conn,data):
+    # Imported suppression is restrictive owner state, never a sharing grant.
+    # Hold the same control lock as restore/mode changes until it is durable.
+    from recall_privacy import journal_lock
+    with journal_lock(conn):
+        return _import_source(conn,data)
+
+
+def _import_source(conn,data):
     src=validate(data);key=src['source_key']
+    from recall_privacy import require_capture
+    require_capture(conn, key)
     existing_source=conn.execute('SELECT * FROM memory_sources WHERE source_key=?',(key,)).fetchone()
     if existing_source and (existing_source['repo_id']!=src['repo_id'] or existing_source['rebuild_in_progress']):
         raise ValueError('Existing source has a different scope or an unfinished rebuild; import refused')
@@ -88,6 +103,10 @@ def import_source(conn,data):
         for bid in {b['id'] for b in data.get('revisions',[])}:
             revisions.collect(conn,bid)
         conn.execute("UPDATE memory_sources SET state='source_missing',byte_offset=0,tail_size=0,head_hash=NULL WHERE source_key=?",(key,))
+        if data.get('capture_policy',{}).get('mode') == 'off':
+            from recall_privacy import journal_state, write_journal
+            write_journal(conn, journal_state(conn) | {key})
+            conn.execute("INSERT INTO recall_capture_policy VALUES(?, 'off', datetime('now')) ON CONFLICT(source_key) DO UPDATE SET mode='off'",(key,))
         conn.execute('RELEASE recall_import')
     except BaseException:
         conn.execute('ROLLBACK TO recall_import');conn.execute('RELEASE recall_import');raise
