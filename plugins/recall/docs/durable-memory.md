@@ -68,3 +68,11 @@ Practical human acceptance and fresh synthetic Claude/Codex behavior checks are
 separate evidence. Neither establishes blind retrieval accuracy or general model
 answer quality. See the [release validation summary](../CHANGELOG.md) and
 [private-session support boundaries](session-privacy-hosts.md).
+
+## Retrieval ranking in 2.6
+
+Lexical search, including natural-language questions, retains the released BM25/recency order. A development-only capitalization/explanation hint was removed after it regressed real-history retrieval. Source text, spelling and capitalization are not treated as proof that a passage answers the question.
+
+Optional hybrid retrieval uses the best position a block earned in either the lexical or semantic list, with agreement used to break ties. The selected passage comes from the channel that supplied its best rank, so a relevant later passage is not replaced by an unrelated opening excerpt. When both channels match overlapping passages of the same retained revision, their source span is combined up to 3,200 characters. This keeps a lexical explanation from disappearing behind a semantic match elsewhere in the same passage window; non-overlapping or larger spans keep the winning passage. This changes ranking only: the stored model fingerprint, vector format, schema and citation identity are unchanged.
+
+No model is bundled or downloaded by Recall. Both BGE-small-en-v1.5 and Snowflake Arctic Embed XS can be supplied as local sentence-transformers models. A smaller model is not automatically a better retriever; compare it on representative questions before replacing an existing semantic index. These options do not affect default lexical search or hooks.

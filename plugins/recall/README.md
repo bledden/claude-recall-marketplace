@@ -1,4 +1,4 @@
-# Recall 2.5.0
+# Recall 2.6.0
 
 Local evidence recall for Claude Code and Codex: recover earlier decisions,
 conversation passages and recorded tool requests with source references and
@@ -9,13 +9,17 @@ The core uses Python and SQLite with no embedding dependency required.
 Lexical retrieval is the default. Optional local embeddings, operational
 logging and private coding sessions are explicit opt-ins.
 
-**Upgrading?** Version 2.5 uses store schema 12. Back up and follow the
+**Version 2.6:** Improved optional hybrid retrieval; default lexical search is unchanged.
+Ranking changes keep store schema 12 and need no history or vector rebuild.
+The optional semantic CLI path needs the updated runtime. Existing lexical-only app readers are unaffected.
+
+**Upgrading?** Version 2.5 introduced store schema 12. Back up and follow the
 [installation and update guide](docs/install-and-update.md) before mixing
 new runtimes with existing stores and loaded readers.
 
 See the [changelog](CHANGELOG.md) for the release history.
 
-> **Marketplace Status:** Published in Anthropic's community marketplace as `recall@claude-community` (`/plugin marketplace add anthropics/claude-plugins-community`, then install `recall`). The catalog entry is pinned to one commit of this repo and is moved by pull request, so it can lag the releases here.
+> **Marketplace Status:** Published in Anthropic's community marketplace as `recall@claude-community` (`/plugin marketplace add anthropics/claude-plugins-community`, then install `recall`). The catalog entry is pinned to one commit of this repo and is updated by the catalog’s bump process, so it can lag the releases here. A repository release does not immediately change that pin.
 >
 > **Pre-built Marketplace:** [claude-recall-marketplace](https://github.com/bledden/claude-recall-marketplace) (the same release, and the only reliable path for the VSCode extension)
 
@@ -105,7 +109,7 @@ Create `claude-recall-marketplace/.claude-plugin/marketplace.json`:
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "recall-local",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Local marketplace for the recall plugin",
   "owner": {
     "name": "your-name",
@@ -590,7 +594,7 @@ wc -l ~/.claude/recall-events.log
 ```
 claude-recall-plugin/
 ├── .claude-plugin/
-│   └── plugin.json                  # Plugin metadata (v2.5.0 development)
+│   └── plugin.json                  # Plugin metadata (development version)
 ├── skills/
 │   ├── recall/
 │   │   └── SKILL.md                 # The /recall:recall skill (Claude can invoke it on its own)
@@ -771,7 +775,9 @@ After a compaction, the session-start hook re-anchors Claude with verbatim excer
 
 Cross-agent: `config codex_import on` imports new Codex rollouts at each Claude session start (newest first, 4 s budget); `install-codex-skill` writes a Codex skill that points at this plugin's `recall_memory.py` into `~/.agents/skills` (the user-skills location in current Codex documentation; `--skills-dir ~/.codex/skills` for older hosts), so Codex sessions can query the same store; confirm in a fresh Codex task that `recall` appears in its skills. Both are explicit opt-ins.
 
-Optional local semantic retrieval uses one sentence-transformers backend. Install that optional package yourself and supply an existing local model directory to `/recall semantic-build --model-path /path/to/model`. No model download occurs. Searches use it only with `--semantic`; otherwise the runtime remains Python stdlib only. Models are fingerprinted, vectors are invalidated when source blocks change, and new passages require another explicit build. This is experimental pending retrieval evaluation; see `benchmarks/README.md`.
+In 2.6, optional hybrid search preserves strong results from either retrieval channel; agreement breaks ties instead of allowing many weak overlapping matches to overwhelm a strong result. Its returned excerpt comes from the channel that supplied the best rank; overlapping matches from the other channel are retained in the same source span when the combined excerpt fits within 3,200 characters. Lexical search retains the released BM25/recency ordering.
+
+Optional local semantic retrieval uses one sentence-transformers backend. Install that optional package yourself and supply an existing local model directory to `/recall semantic-build --model-path /path/to/model`. No model download occurs. Searches use it only with `--semantic`; otherwise the runtime remains Python stdlib only. Models are fingerprinted, vectors are invalidated when source blocks change, and new passages require another explicit build. This remains experimental; the limited retrieval evaluation and its caveats are in `benchmarks/README.md`.
 
 The durable CLI's search, get, brief, status, sources, export and backup commands
 require an existing current-schema store and do not migrate it or write invocation

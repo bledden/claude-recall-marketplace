@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-09-08
+
+### Changed
+- Optional hybrid retrieval preserves strong lexical and semantic results using their best rank. Agreement between channels breaks ties instead of overwhelming a strong result found by only one channel. No additional model, network request or dependency is introduced.
+
+### Fixed
+- Removed the development-only question-ranking hint after real-history evaluation found substantial regressions. Lexical retrieval keeps the released BM25/recency ordering, including natural-language questions.
+- Hybrid results returning an unrelated lexical excerpt when a different passage of the same block earned the stronger semantic rank. Overlapping lexical and semantic matches in the same retained revision are preserved together up to 3,200 characters. Block identity, retained hash and character offsets remain attached to the selected source span.
+- Marketplace guidance no longer describes direct pull requests as the catalog pin update mechanism.
+
+### Upgrade
+- Schema remains 12. These ranking changes do not require a history rebuild, migration or semantic-vector rebuild. A deliberate change of embedding model still requires an explicit semantic build.
+- Refresh the plugin runtime to use the hybrid fixes. Existing lexical-only Claude app readers have no retrieval change and do not require replacement for this fix. Embeddings remain optional and users supply a local model; this release does not switch anyone's model automatically.
+
 ## [2.5.0] - 2026-09-07
 
 ### Added

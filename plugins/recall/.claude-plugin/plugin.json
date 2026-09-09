@@ -1,6 +1,6 @@
 {
   "name": "recall",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Local evidence recall across Claude Code and Codex histories: durable text and tool-request retrieval, checked citations, compaction recovery, optional private coding sessions, and separately configured Claude app readers.",
   "author": {
     "name": "bledden",

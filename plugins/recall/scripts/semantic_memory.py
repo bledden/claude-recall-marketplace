@@ -167,11 +167,8 @@ def hybrid_search(conn,query,lexical,limit=5,repo_id=None,source_key=None,since=
     matrix=np.frombuffer(b''.join(blobs),dtype='<f4').reshape(len(blobs),len(vector))
     similarities=matrix@vector
     order=np.argsort(-similarities)[:max(30,limit*5)]
-    # Fuse ranks rather than comparing incompatible BM25/cosine score scales.
-    scores,candidates={},{}
-    for rank,row in enumerate(lexical):
-        key=row['block_id']; candidates[key]=row
-        scores[key]=1/(60+rank+1)
+    # Deduplicate semantic chunks before fusing with lexical block ranks.
+    semantic=[]
     seen=set()
     for rank,index in enumerate(order):
         row=rows[int(index)]; key=row['block_id']
@@ -183,7 +180,6 @@ def hybrid_search(conn,query,lexical,limit=5,repo_id=None,source_key=None,since=
         row['get']=f"get {key} --start {row['start_char']}"
         from memory_store import evidence_provenance
         row['provenance']=evidence_provenance(row['role'],row['kind'])
-        candidates.setdefault(key,row)
-        scores[key]=scores.get(key,0)+1/(60+rank+1)
-    return [dict(candidates[key],fusion_score=scores[key])
-            for key in sorted(scores,key=scores.get,reverse=True)[:limit]]
+        semantic.append(row)
+    from retrieval_ranking import fuse
+    return fuse(lexical,semantic,limit)
